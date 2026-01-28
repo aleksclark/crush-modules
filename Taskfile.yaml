@@ -37,6 +37,7 @@ tasks:
         {{.OUTPUT_DIR}}/xcrush build \
           --crush {{.CRUSH_POC}} \
           --with ./ping \
+          --with ./otlp \
           --output {{.OUTPUT_DIR}}/crush
 
   distro:ping:
@@ -49,11 +50,21 @@ tasks:
           --with ./ping \
           --output {{.OUTPUT_DIR}}/crush-ping
 
+  distro:otlp:
+    desc: Build a Crush distro with only the otlp plugin
+    deps: [build:xcrush]
+    cmds:
+      - |
+        {{.OUTPUT_DIR}}/xcrush build \
+          --crush {{.CRUSH_POC}} \
+          --with ./otlp \
+          --output {{.OUTPUT_DIR}}/crush-otlp
+
   test:
     desc: Run tests for all plugins
-    dir: '{{.ROOT_DIR}}/ping'
     cmds:
-      - go test ./...
+      - cd ping && go test ./...
+      - cd otlp && go test ./...
 
   test:e2e:
     desc: Run end-to-end tests (requires distro to be built first)

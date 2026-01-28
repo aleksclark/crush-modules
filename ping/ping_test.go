@@ -50,3 +50,28 @@ func TestPingToolMultipleInvocations(t *testing.T) {
 		require.Equal(t, "pong", resp.Content)
 	}
 }
+
+// TestPingToolCustomResponse verifies the tool can use a custom response string.
+func TestPingToolCustomResponse(t *testing.T) {
+	t.Parallel()
+
+	customResponse := "hello from ping!"
+	tool := NewPingToolWithResponse(customResponse)
+
+	call := fantasy.ToolCall{
+		ID:    "test-call",
+		Name:  ToolName,
+		Input: "{}",
+	}
+
+	resp, err := tool.Run(context.Background(), call)
+	require.NoError(t, err)
+	require.Equal(t, customResponse, resp.Content)
+}
+
+// TestPingToolDefaultResponse verifies the default response constant.
+func TestPingToolDefaultResponse(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, "pong", DefaultResponse)
+}

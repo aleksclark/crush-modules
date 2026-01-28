@@ -12,6 +12,10 @@ crush-modules/
 │   ├── ping.go            # Tool implementation
 │   ├── ping_test.go       # Unit tests
 │   └── ping_e2e_test.go   # End-to-end tests
+├── otlp/                  # OTLP tracing hook plugin
+│   ├── go.mod             # Module-specific dependencies
+│   ├── otlp.go            # Hook implementation
+│   └── otlp_test.go       # Unit tests
 ├── testutil/              # Shared test utilities
 │   └── testutil.go        # Terminal testing helpers
 ├── Taskfile.yaml          # Build and test commands
@@ -87,24 +91,39 @@ mytool(param: "value") -> "result"
 `
 )
 
+// Config defines configuration options for this plugin.
+// Users configure this in crush.json under options.plugins.mytool
+type Config struct {
+    APIKey  string `json:"api_key,omitempty"`
+    Timeout int    `json:"timeout,omitempty"`
+}
+
 // MyToolParams defines the parameters the LLM can pass.
 type MyToolParams struct {
     Param string `json:"param" jsonschema:"description=What this param does"`
 }
 
 func init() {
-    plugin.RegisterTool(ToolName, func(ctx context.Context, app *plugin.App) (plugin.Tool, error) {
-        // Access app.WorkingDir(), app.Logger(), app.ExtensionConfig() here
-        return NewMyTool(), nil
-    })
+    // Register with config schema for validation
+    plugin.RegisterToolWithConfig(ToolName, func(ctx context.Context, app *plugin.App) (plugin.Tool, error) {
+        // Load typed configuration
+        var cfg Config
+        if err := app.LoadConfig(ToolName, &cfg); err != nil {
+            return nil, err
+        }
+        
+        // Access other app services
+        // app.WorkingDir(), app.Logger(), app.Permissions()
+        return NewMyTool(cfg), nil
+    }, &Config{})
 }
 
-func NewMyTool() fantasy.AgentTool {
+func NewMyTool(cfg Config) fantasy.AgentTool {
     return fantasy.NewAgentTool(
         ToolName,
         Description,
         func(ctx context.Context, params MyToolParams, call fantasy.ToolCall) (fantasy.ToolResponse, error) {
-            // Tool implementation
+            // Tool implementation using cfg
             return fantasy.NewTextResponse("result"), nil
         },
     )
@@ -125,6 +144,70 @@ distro:
         --with ./myplugin \
         --output {{.OUTPUT_DIR}}/crush
 ```
+
+## Plugin Configuration
+
+Plugins can be configured and disabled via the user's `crush.json` file.
+
+### Configuration Structure
+
+```json
+{
+  "options": {
+    "disabled_plugins": ["plugin_to_disable"],
+    "plugins": {
+      "ping": {
+        "response_string": "custom response"
+      },
+      "myplugin": {
+        "api_key": "sk-xxx",
+        "timeout": 30
+      }
+    }
+  }
+}
+```
+
+### Disabling Plugins
+
+Add plugin names to `options.disabled_plugins` to prevent them from loading:
+
+```json
+{
+  "options": {
+    "disabled_plugins": ["ping", "debug_tool"]
+  }
+}
+```
+
+### Plugin-Specific Config
+
+Each plugin defines its own config schema. Use `app.LoadConfig()` to load
+typed configuration:
+
+```go
+type Config struct {
+    APIKey  string `json:"api_key"`
+    Timeout int    `json:"timeout"`
+}
+
+func init() {
+    plugin.RegisterToolWithConfig("myplugin", func(ctx context.Context, app *plugin.App) (plugin.Tool, error) {
+        var cfg Config
+        if err := app.LoadConfig("myplugin", &cfg); err != nil {
+            return nil, err
+        }
+        // Use cfg.APIKey, cfg.Timeout
+        return NewMyTool(cfg), nil
+    }, &Config{})
+}
+```
+
+Benefits of `RegisterToolWithConfig`:
+- Config schema is stored for documentation/validation
+- `app.LoadConfig()` handles JSON marshaling/unmarshaling
+- Type mismatches are caught early with clear errors
+- Missing config leaves struct with zero/default values
 
 ## Testing Requirements
 
@@ -268,34 +351,165 @@ crush-plugin-poc/
 
 ### Adding New Hooks
 
-If you need a new hook point, follow this pattern:
+The plugin system supports two types of extensions:
+- **Tools** - Agent tools that can be invoked during chat (`RegisterTool`)
+- **Hooks** - Background processors that observe system events (`RegisterHook`)
 
-1. Define the hook interface in `plugin/plugin.go`
-2. Add registration function (e.g., `RegisterOnToolCall()`)
-3. Call the hook from the appropriate place in crush-plugin-poc
-4. Document the hook in this file
+#### Creating a Hook Plugin
 
-Example hook addition:
+Hooks run in the background and can subscribe to message events:
 
 ```go
-// In plugin/plugin.go
-type OnToolCallHook func(ctx context.Context, toolName string, input string) error
+package myhook
 
-var onToolCallHooks []OnToolCallHook
+import (
+    "context"
+    "github.com/charmbracelet/crush/plugin"
+)
 
-func RegisterOnToolCall(hook OnToolCallHook) {
-    onToolCallHooks = append(onToolCallHooks, hook)
+const HookName = "myhook"
+
+type Config struct {
+    Endpoint string `json:"endpoint,omitempty"`
 }
 
-func InvokeOnToolCall(ctx context.Context, toolName, input string) error {
-    for _, hook := range onToolCallHooks {
-        if err := hook(ctx, toolName, input); err != nil {
-            return err
+func init() {
+    plugin.RegisterHookWithConfig(HookName, func(ctx context.Context, app *plugin.App) (plugin.Hook, error) {
+        var cfg Config
+        if err := app.LoadConfig(HookName, &cfg); err != nil {
+            return nil, err
+        }
+        return NewMyHook(app, cfg)
+    }, &Config{})
+}
+
+type MyHook struct {
+    app *plugin.App
+    cfg Config
+}
+
+func NewMyHook(app *plugin.App, cfg Config) (*MyHook, error) {
+    return &MyHook{app: app, cfg: cfg}, nil
+}
+
+func (h *MyHook) Name() string {
+    return HookName
+}
+
+func (h *MyHook) Start(ctx context.Context) error {
+    messages := h.app.Messages()
+    if messages == nil {
+        return nil // No message subscriber available
+    }
+
+    events := messages.SubscribeMessages(ctx)
+    for {
+        select {
+        case <-ctx.Done():
+            return h.Stop()
+        case event, ok := <-events:
+            if !ok {
+                return nil
+            }
+            h.handleEvent(event)
         }
     }
+}
+
+func (h *MyHook) Stop() error {
     return nil
 }
+
+func (h *MyHook) handleEvent(event plugin.MessageEvent) {
+    switch event.Type {
+    case plugin.MessageCreated:
+        // Handle new message
+    case plugin.MessageUpdated:
+        // Handle message update (e.g., streaming, tool calls)
+    case plugin.MessageDeleted:
+        // Handle message deletion
+    }
+}
 ```
+
+#### Message Event Types
+
+Hooks can observe:
+- `plugin.MessageCreated` - New message created
+- `plugin.MessageUpdated` - Message content updated (streaming, tool calls)
+- `plugin.MessageDeleted` - Message removed
+
+#### Message Structure
+
+```go
+type Message struct {
+    ID        string
+    SessionID string
+    Role      MessageRole  // user, assistant, system, tool
+    Content   string
+    ToolCalls   []ToolCallInfo
+    ToolResults []ToolResultInfo
+}
+
+type ToolCallInfo struct {
+    ID       string
+    Name     string
+    Input    string  // JSON input
+    Finished bool
+}
+
+type ToolResultInfo struct {
+    ToolCallID string
+    Name       string
+    Content    string
+    IsError    bool
+}
+```
+
+## OTLP Tracing Plugin
+
+The `otlp` plugin exports traces to an OTLP-compatible backend (Jaeger, Zipkin,
+OpenTelemetry Collector).
+
+### Configuration
+
+```json
+{
+  "options": {
+    "plugins": {
+      "otlp": {
+        "endpoint": "http://localhost:4318",
+        "service_name": "crush",
+        "insecure": true,
+        "headers": {
+          "Authorization": "Bearer token"
+        }
+      }
+    }
+  }
+}
+```
+
+### What's Traced
+
+- **Session spans** - Root spans for each chat session
+- **User messages** - Spans with message content
+- **Assistant messages** - Spans with response content
+- **Tool calls** - Spans with tool name, input, and output
+
+### Span Attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `session.id` | Chat session identifier |
+| `message.id` | Message identifier |
+| `message.role` | user/assistant/tool |
+| `message.content` | Text content (truncated) |
+| `tool.id` | Tool call identifier |
+| `tool.name` | Name of the tool |
+| `tool.input` | JSON input (truncated) |
+| `tool.result` | Result content (truncated) |
+| `tool.is_error` | Whether tool returned error |
 
 ## Code Style
 
