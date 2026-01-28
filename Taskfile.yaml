@@ -1,0 +1,73 @@
+# Crush Modules
+#
+# A collection of plugins for Crush AI assistant.
+# Use `task distro` to build a custom Crush binary with all plugins.
+
+version: '3'
+
+vars:
+  CRUSH_POC: '{{.ROOT_DIR}}/../crush-plugin-poc'
+  OUTPUT_DIR: '{{.ROOT_DIR}}/dist'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  build:xcrush:
+    desc: Build the xcrush tool
+    internal: true
+    dir: '{{.CRUSH_POC}}'
+    cmds:
+      - mkdir -p {{.OUTPUT_DIR}}
+      - go build -o {{.OUTPUT_DIR}}/xcrush ./cmd/xcrush
+    sources:
+      - '{{.CRUSH_POC}}/cmd/xcrush/*.go'
+      - '{{.CRUSH_POC}}/plugin/*.go'
+      - '{{.CRUSH_POC}}/cmd/crush/*.go'
+    generates:
+      - '{{.OUTPUT_DIR}}/xcrush'
+
+  distro:
+    desc: Build a Crush distro with all plugins
+    deps: [build:xcrush]
+    cmds:
+      - |
+        {{.OUTPUT_DIR}}/xcrush build \
+          --crush {{.CRUSH_POC}} \
+          --with ./ping \
+          --output {{.OUTPUT_DIR}}/crush
+
+  distro:ping:
+    desc: Build a Crush distro with only the ping plugin
+    deps: [build:xcrush]
+    cmds:
+      - |
+        {{.OUTPUT_DIR}}/xcrush build \
+          --crush {{.CRUSH_POC}} \
+          --with ./ping \
+          --output {{.OUTPUT_DIR}}/crush-ping
+
+  test:
+    desc: Run tests for all plugins
+    dir: '{{.ROOT_DIR}}/ping'
+    cmds:
+      - go test ./...
+
+  test:e2e:
+    desc: Run end-to-end tests (requires distro to be built first)
+    deps: [distro]
+    dir: '{{.ROOT_DIR}}/ping'
+    cmds:
+      - go test -v -run 'Plugin'
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf {{.OUTPUT_DIR}}
+
+  list:
+    desc: List plugins in built distro
+    cmds:
+      - '{{.OUTPUT_DIR}}/crush --list-plugins'
