@@ -1,0 +1,58 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout crush-modules
+        uses: actions/checkout@v4
+
+      - name: Checkout crush-plugin-poc
+        uses: actions/checkout@v4
+        with:
+          repository: aleksclark/crush
+          ref: feat/plugin-system
+          path: crush-plugin-poc
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: crush-plugin-poc/go.mod
+          cache-dependency-path: |
+            go.sum
+            ping/go.sum
+            otlp/go.sum
+            agent-status/go.sum
+
+      - name: Update go.mod replacements for CI
+        run: |
+          for mod in ping otlp agent-status; do
+            cd $mod
+            go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
+            go mod edit -replace github.com/aleksclark/crush-modules=../
+            cd ..
+          done
+
+      - name: Build xcrush
+        run: |
+          cd crush-plugin-poc
+          go build -o ../dist/xcrush ./cmd/xcrush
+
+      - name: Build crush with all plugins (including ping for e2e tests)
+        run: |
+          ./dist/xcrush build \
+            --crush ./crush-plugin-poc \
+            --with ./ping \
+            --with ./otlp \
+            --with ./agent-status \
+            --output ./dist/crush
+
+      - name: Run E2E tests
+        run: |
+          cd ping && go test -v -run 'Plugin' ./...
+          cd ../agent-status && go test -v -run 'Plugin|E2E' ./...
