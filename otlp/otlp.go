@@ -20,6 +20,7 @@ package otlp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -92,6 +93,11 @@ type OTLPHook struct {
 	// toolSpans tracks active tool call spans by tool call ID.
 	toolSpans   map[string]trace.Span
 	toolSpansMu sync.RWMutex
+
+	// completedAssistantMessages tracks message IDs that have already had spans created.
+	// This prevents duplicate spans when MessageUpdated is called multiple times.
+	completedAssistantMessages   map[string]struct{}
+	completedAssistantMessagesMu sync.RWMutex
 }
 
 // NewOTLPHook creates a new OTLP tracing hook.
@@ -104,11 +110,12 @@ func NewOTLPHook(app *plugin.App, cfg Config) (*OTLPHook, error) {
 	}
 
 	hook := &OTLPHook{
-		app:             app,
-		cfg:             cfg,
-		logger:          app.Logger().With("hook", HookName),
-		sessionContexts: make(map[string]sessionContext),
-		toolSpans:       make(map[string]trace.Span),
+		app:                        app,
+		cfg:                        cfg,
+		logger:                     app.Logger().With("hook", HookName),
+		sessionContexts:            make(map[string]sessionContext),
+		toolSpans:                  make(map[string]trace.Span),
+		completedAssistantMessages: make(map[string]struct{}),
 	}
 
 	return hook, nil
@@ -166,6 +173,11 @@ func (h *OTLPHook) Stop() error {
 	}
 	h.toolSpans = make(map[string]trace.Span)
 	h.toolSpansMu.Unlock()
+
+	// Clear completed assistant messages tracker.
+	h.completedAssistantMessagesMu.Lock()
+	h.completedAssistantMessages = make(map[string]struct{})
+	h.completedAssistantMessagesMu.Unlock()
 
 	// Shutdown the tracer provider.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -240,25 +252,31 @@ func (h *OTLPHook) handleMessageCreated(ctx context.Context, msg plugin.Message)
 	case plugin.MessageRoleUser:
 		h.createUserMessageSpan(sessionCtx, msg)
 	case plugin.MessageRoleAssistant:
-		h.createAssistantMessageSpan(sessionCtx, msg)
+		// Don't create span on MessageCreated - wait for MessageUpdated when complete.
+		// Streaming responses arrive via updates, so the initial create has no content.
 	case plugin.MessageRoleTool:
 		h.handleToolResults(sessionCtx, msg)
 	}
 }
 
 func (h *OTLPHook) handleMessageUpdated(ctx context.Context, msg plugin.Message) {
-	// For assistant messages with tool calls, create tool call spans.
-	if msg.Role == plugin.MessageRoleAssistant && len(msg.ToolCalls) > 0 {
-		sessionCtx := h.getOrCreateSessionContext(ctx, msg.SessionID)
+	if msg.Role != plugin.MessageRoleAssistant {
+		return
+	}
 
-		for _, tc := range msg.ToolCalls {
-			if tc.Finished {
-				h.endToolCallSpan(tc.ID)
-			} else {
-				h.createToolCallSpan(sessionCtx, tc, msg.SessionID)
-			}
+	sessionCtx := h.getOrCreateSessionContext(ctx, msg.SessionID)
+
+	// Handle tool calls.
+	for _, tc := range msg.ToolCalls {
+		if tc.Finished {
+			h.endToolCallSpan(tc.ID)
+		} else {
+			h.createToolCallSpan(sessionCtx, tc, msg.SessionID)
 		}
 	}
+
+	// Create assistant message span only when message is complete.
+	h.maybeCreateAssistantMessageSpan(sessionCtx, msg)
 }
 
 func (h *OTLPHook) handleMessageDeleted(ctx context.Context, msg plugin.Message) {
@@ -329,33 +347,53 @@ func (h *OTLPHook) createUserMessageSpan(ctx context.Context, msg plugin.Message
 	span.End()
 }
 
-func (h *OTLPHook) createAssistantMessageSpan(ctx context.Context, msg plugin.Message) {
+func (h *OTLPHook) maybeCreateAssistantMessageSpan(ctx context.Context, msg plugin.Message) {
+	// Check if message is complete.
+	// A message is complete when it has content and all tool calls are finished.
+	allToolsFinished := true
+	for _, tc := range msg.ToolCalls {
+		if !tc.Finished {
+			allToolsFinished = false
+			break
+		}
+	}
+
+	// Only create span when message is complete: has content AND all tools finished.
+	if msg.Content == "" || !allToolsFinished {
+		return
+	}
+
+	// Check if we've already created a span for this message.
+	h.completedAssistantMessagesMu.Lock()
+	if _, exists := h.completedAssistantMessages[msg.ID]; exists {
+		h.completedAssistantMessagesMu.Unlock()
+		return
+	}
+	h.completedAssistantMessages[msg.ID] = struct{}{}
+	h.completedAssistantMessagesMu.Unlock()
+
+	// Create and immediately end the span with final content.
 	_, span := h.tracer.Start(ctx, "crush.message.assistant",
 		trace.WithAttributes(
 			attribute.String("message.id", msg.ID),
 			attribute.String("message.role", string(msg.Role)),
 			attribute.String("session.id", msg.SessionID),
+			attribute.Int("message.content_length", len(msg.Content)),
 		),
 	)
 
-	// Add content if present.
-	if msg.Content != "" {
-		content := msg.Content
-		if len(content) > 1000 {
-			content = content[:1000] + "..."
-		}
-		span.SetAttributes(
-			attribute.String("message.content", content),
-			attribute.Int("message.content_length", len(msg.Content)),
-		)
+	// Add content (truncated if too long).
+	content := msg.Content
+	if len(content) > 1000 {
+		content = content[:1000] + "..."
 	}
+	span.SetAttributes(attribute.String("message.content", content))
 
-	// Add tool call count.
+	// Add tool call count if any.
 	if len(msg.ToolCalls) > 0 {
 		span.SetAttributes(attribute.Int("message.tool_calls", len(msg.ToolCalls)))
 	}
 
-	// End assistant message span (streaming updates are handled separately).
 	span.End()
 }
 
@@ -376,14 +414,53 @@ func (h *OTLPHook) createToolCallSpan(ctx context.Context, tc plugin.ToolCallInf
 		),
 	)
 
-	// Add input as attribute (truncated if too long).
+	// Add raw input as attribute (truncated if too long).
 	input := tc.Input
 	if len(input) > 2000 {
 		input = input[:2000] + "..."
 	}
 	span.SetAttributes(attribute.String("tool.input", input))
 
+	// Parse JSON input and add individual parameters as attributes.
+	h.addToolParamsToSpan(span, tc.Input)
+
 	h.toolSpans[tc.ID] = span
+}
+
+// addToolParamsToSpan parses JSON tool input and adds individual parameters as span attributes.
+func (h *OTLPHook) addToolParamsToSpan(span trace.Span, input string) {
+	var params map[string]any
+	if err := json.Unmarshal([]byte(input), &params); err != nil {
+		return // Not valid JSON, skip parameter extraction
+	}
+
+	for key, value := range params {
+		attrKey := "tool.param." + key
+		switch v := value.(type) {
+		case string:
+			// Truncate long string values.
+			if len(v) > 500 {
+				v = v[:500] + "..."
+			}
+			span.SetAttributes(attribute.String(attrKey, v))
+		case float64:
+			// JSON numbers are float64.
+			span.SetAttributes(attribute.Float64(attrKey, v))
+		case bool:
+			span.SetAttributes(attribute.Bool(attrKey, v))
+		case nil:
+			span.SetAttributes(attribute.String(attrKey, "null"))
+		default:
+			// For arrays and objects, marshal back to JSON string.
+			if jsonBytes, err := json.Marshal(v); err == nil {
+				jsonStr := string(jsonBytes)
+				if len(jsonStr) > 500 {
+					jsonStr = jsonStr[:500] + "..."
+				}
+				span.SetAttributes(attribute.String(attrKey, jsonStr))
+			}
+		}
+	}
 }
 
 func (h *OTLPHook) endToolCallSpan(toolCallID string) {
