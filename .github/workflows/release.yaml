@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - master
 
 permissions:
   contents: write
@@ -51,11 +51,12 @@ jobs:
             go.sum
             otlp/go.sum
             agent-status/go.sum
+            periodic-prompts/go.sum
 
       - name: Update go.mod replacements for CI
         shell: bash
         run: |
-          for mod in otlp agent-status; do
+          for mod in otlp agent-status periodic-prompts; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../
@@ -78,6 +79,7 @@ jobs:
             --crush ./crush-plugin-poc \
             --with ./otlp \
             --with ./agent-status \
+            --with ./periodic-prompts \
             --output ./crush-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
 
       - name: Create tarball (Unix)
@@ -105,6 +107,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate CalVer tag
+        id: calver
+        run: |
+          # CalVer format: YYYY.MM.DD.BUILD
+          # BUILD is the number of commits today or a sequence number
+          DATE=$(date -u +%Y.%m.%d)
+          
+          # Count existing tags with today's date to determine build number
+          EXISTING=$(git tag -l "${DATE}.*" | wc -l)
+          BUILD=$((EXISTING + 1))
+          
+          TAG="${DATE}.${BUILD}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Generated tag: ${TAG}"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -114,6 +133,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.calver.outputs.tag }}
+          name: Release ${{ steps.calver.outputs.tag }}
           files: |
             artifacts/crush-linux-amd64/crush-linux-amd64.tar.gz
             artifacts/crush-linux-arm64/crush-linux-arm64.tar.gz
@@ -122,4 +143,4 @@ jobs:
             artifacts/crush-windows-amd64/crush-windows-amd64.zip
           generate_release_notes: true
           draft: false
-          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+          prerelease: false
