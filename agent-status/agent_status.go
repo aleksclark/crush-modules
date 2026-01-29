@@ -85,23 +85,36 @@ type StatusFile struct {
 	Updated  int64  `json:"updated"`
 
 	// Optional fields.
-	PID     int    `json:"pid,omitempty"`
-	Project string `json:"project,omitempty"`
-	CWD     string `json:"cwd,omitempty"`
-	Task    string `json:"task,omitempty"`
-	Model   string `json:"model,omitempty"`
-	Started int64  `json:"started,omitempty"`
-	Error   string `json:"error,omitempty"`
+	PID      int     `json:"pid,omitempty"`
+	Project  string  `json:"project,omitempty"`
+	CWD      string  `json:"cwd,omitempty"`
+	Task     string  `json:"task,omitempty"`
+	Model    string  `json:"model,omitempty"`
+	Provider string  `json:"provider,omitempty"`
+	Started  int64   `json:"started,omitempty"`
+	Error    string  `json:"error,omitempty"`
+	CostUSD  float64 `json:"cost_usd,omitempty"`
 
 	// Tool tracking.
 	Tools *ToolsInfo `json:"tools,omitempty"`
+
+	// Token usage.
+	Tokens *TokensInfo `json:"tokens,omitempty"`
 }
 
 // ToolsInfo contains tool usage information.
 type ToolsInfo struct {
-	Active string         `json:"active,omitempty"`
+	Active *string        `json:"active"`
 	Recent []string       `json:"recent,omitempty"`
 	Counts map[string]int `json:"counts,omitempty"`
+}
+
+// TokensInfo contains token usage counters.
+type TokensInfo struct {
+	Input      int64 `json:"input"`
+	Output     int64 `json:"output"`
+	CacheRead  int64 `json:"cache_read"`
+	CacheWrite int64 `json:"cache_write"`
 }
 
 func init() {
@@ -126,7 +139,7 @@ type AgentStatusHook struct {
 	mu            sync.RWMutex
 	currentStatus string
 	currentTask   string
-	activeTool    string
+	activeTool    *string // nil when no tool active, pointer to name when active
 	recentTools   []string
 	toolCounts    map[string]int
 	lastError     string
@@ -244,7 +257,7 @@ func (h *AgentStatusHook) handleMessageCreated(msg plugin.Message) {
 		// User sent a message, agent is now thinking.
 		h.currentStatus = StatusThinking
 		h.currentTask = truncateString(msg.Content, 100)
-		h.activeTool = ""
+		h.activeTool = nil
 		h.lastError = ""
 	case plugin.MessageRoleAssistant:
 		// Assistant responded, check if there are tool calls.
@@ -263,7 +276,7 @@ func (h *AgentStatusHook) handleMessageCreated(msg plugin.Message) {
 		}
 		// After tool results, we're thinking about the next step.
 		h.currentStatus = StatusThinking
-		h.activeTool = ""
+		h.activeTool = nil
 	}
 }
 
@@ -276,13 +289,13 @@ func (h *AgentStatusHook) handleMessageUpdated(msg plugin.Message) {
 	for _, tc := range msg.ToolCalls {
 		if !tc.Finished {
 			h.currentStatus = StatusWorking
-			h.activeTool = tc.Name
+			h.activeTool = &tc.Name
 			h.addRecentTool(tc.Name)
 			h.toolCounts[tc.Name]++
 		} else {
 			// Tool finished, might have more or be done.
-			if h.activeTool == tc.Name {
-				h.activeTool = ""
+			if h.activeTool != nil && *h.activeTool == tc.Name {
+				h.activeTool = nil
 			}
 		}
 	}
@@ -337,6 +350,9 @@ func (h *AgentStatusHook) writeStatusFile() error {
 }
 
 func (h *AgentStatusHook) buildStatusFile() StatusFile {
+	cwd := h.app.WorkingDir()
+	project := filepath.Base(cwd)
+
 	sf := StatusFile{
 		Version:  SchemaVersion,
 		Agent:    DefaultAgentType,
@@ -344,7 +360,8 @@ func (h *AgentStatusHook) buildStatusFile() StatusFile {
 		Status:   h.currentStatus,
 		Updated:  time.Now().Unix(),
 		PID:      os.Getpid(),
-		CWD:      h.app.WorkingDir(),
+		Project:  project,
+		CWD:      cwd,
 		Started:  h.startedAt,
 	}
 
@@ -356,12 +373,25 @@ func (h *AgentStatusHook) buildStatusFile() StatusFile {
 		sf.Error = h.lastError
 	}
 
-	// Include tool info if we have any.
-	if h.activeTool != "" || len(h.recentTools) > 0 || len(h.toolCounts) > 0 {
-		sf.Tools = &ToolsInfo{
-			Active: h.activeTool,
-			Recent: h.recentTools,
-			Counts: h.toolCounts,
+	// Include tool info - always include for consistency with reference implementation.
+	sf.Tools = &ToolsInfo{
+		Active: h.activeTool,
+		Recent: h.recentTools,
+		Counts: h.toolCounts,
+	}
+
+	// Include session info if available.
+	if sip := h.app.SessionInfo(); sip != nil {
+		if info := sip.SessionInfo(); info != nil {
+			sf.Model = info.Model
+			sf.Provider = info.Provider
+			sf.CostUSD = info.CostUSD
+			sf.Tokens = &TokensInfo{
+				Input:      info.Tokens.Input,
+				Output:     info.Tokens.Output,
+				CacheRead:  info.Tokens.CacheRead,
+				CacheWrite: info.Tokens.CacheWrite,
+			}
 		}
 	}
 

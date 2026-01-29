@@ -55,7 +55,8 @@ func TestBuildStatusFile(t *testing.T) {
 
 	hook.currentStatus = StatusWorking
 	hook.currentTask = "implementing feature"
-	hook.activeTool = "edit"
+	editTool := "edit"
+	hook.activeTool = &editTool
 	hook.recentTools = []string{"view", "grep", "edit"}
 	hook.toolCounts = map[string]int{"view": 5, "grep": 2, "edit": 1}
 
@@ -72,7 +73,8 @@ func TestBuildStatusFile(t *testing.T) {
 	require.NotZero(t, sf.Started)
 
 	require.NotNil(t, sf.Tools)
-	require.Equal(t, "edit", sf.Tools.Active)
+	require.NotNil(t, sf.Tools.Active)
+	require.Equal(t, "edit", *sf.Tools.Active)
 	require.Equal(t, []string{"view", "grep", "edit"}, sf.Tools.Recent)
 	require.Equal(t, 5, sf.Tools.Counts["view"])
 }
@@ -189,7 +191,8 @@ func TestHandleMessageUpdated(t *testing.T) {
 		},
 	})
 	require.Equal(t, StatusWorking, hook.currentStatus)
-	require.Equal(t, "view", hook.activeTool)
+	require.NotNil(t, hook.activeTool)
+	require.Equal(t, "view", *hook.activeTool)
 	require.Contains(t, hook.recentTools, "view")
 	require.Equal(t, 1, hook.toolCounts["view"])
 
@@ -201,7 +204,7 @@ func TestHandleMessageUpdated(t *testing.T) {
 		},
 	})
 	require.Equal(t, StatusThinking, hook.currentStatus)
-	require.Equal(t, "", hook.activeTool)
+	require.Nil(t, hook.activeTool)
 }
 
 func TestAddRecentTool(t *testing.T) {
@@ -275,6 +278,7 @@ func TestGenerateInstanceID(t *testing.T) {
 func TestStatusFileJSONFormat(t *testing.T) {
 	t.Parallel()
 
+	editActive := "edit"
 	sf := StatusFile{
 		Version:  1,
 		Agent:    "crush",
@@ -286,7 +290,7 @@ func TestStatusFileJSONFormat(t *testing.T) {
 		Task:     "implementing feature",
 		Started:  1737276000,
 		Tools: &ToolsInfo{
-			Active: "edit",
+			Active: &editActive,
 			Recent: []string{"view", "grep", "edit"},
 			Counts: map[string]int{"edit": 5, "view": 12, "grep": 3},
 		},
