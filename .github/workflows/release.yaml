@@ -39,7 +39,7 @@ jobs:
       - name: Checkout crush-plugin-poc
         uses: actions/checkout@v4
         with:
-          repository: charmbracelet/crush
+          repository: aleksclark/crush
           ref: feat/plugin-system
           path: crush-plugin-poc
 
