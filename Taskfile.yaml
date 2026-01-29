@@ -38,6 +38,7 @@ tasks:
           --crush {{.CRUSH_POC}} \
           --with ./ping \
           --with ./otlp \
+          --with ./agent-status \
           --output {{.OUTPUT_DIR}}/crush
 
   distro:ping:
@@ -60,11 +61,22 @@ tasks:
           --with ./otlp \
           --output {{.OUTPUT_DIR}}/crush-otlp
 
+  distro:agent-status:
+    desc: Build a Crush distro with only the agent-status plugin
+    deps: [build:xcrush]
+    cmds:
+      - |
+        {{.OUTPUT_DIR}}/xcrush build \
+          --crush {{.CRUSH_POC}} \
+          --with ./agent-status \
+          --output {{.OUTPUT_DIR}}/crush-agent-status
+
   test:
     desc: Run tests for all plugins
     cmds:
       - cd ping && go test ./...
       - cd otlp && go test ./...
+      - cd agent-status && go test ./...
 
   test:e2e:
     desc: Run end-to-end tests (requires distro to be built first)

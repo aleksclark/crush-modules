@@ -511,6 +511,57 @@ OpenTelemetry Collector).
 | `tool.result` | Result content (truncated) |
 | `tool.is_error` | Whether tool returned error |
 
+## Agent Status Plugin
+
+The `agent-status` plugin reports the agent's current state to a JSON file that
+external tools can monitor. This implements the protocol defined at:
+https://github.com/aleksclark/go-turing-smart-screen/blob/master/AGENT_STATUS_REPORTING.md
+
+### Configuration
+
+```json
+{
+  "options": {
+    "plugins": {
+      "agent-status": {
+        "status_dir": "~/.agent-status",
+        "update_interval_seconds": 10
+      }
+    }
+  }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `status_dir` | `~/.agent-status` | Directory for status files. Supports `~` expansion. |
+| `update_interval_seconds` | `10` | How often to update the file (minimum). |
+
+### Status File Format
+
+The plugin writes JSON files named `crush-{instance}.json` with:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `v` | int | Schema version (always 1) |
+| `agent` | string | Agent type ("crush") |
+| `instance` | string | Unique instance ID |
+| `status` | string | Current status (idle, thinking, working, etc.) |
+| `updated` | int | Unix timestamp of last update |
+| `pid` | int | Process ID |
+| `cwd` | string | Current working directory |
+| `task` | string | Current task description |
+| `tools.active` | string | Currently running tool |
+| `tools.recent` | []string | Last 10 tools used |
+| `tools.counts` | map | Tool invocation counts |
+
+### Status Values
+
+- `idle` - Waiting for user input
+- `thinking` - Processing/reasoning
+- `working` - Actively executing tools
+- `error` - Encountered an error
+
 ## Code Style
 
 Follow the same conventions as crush-plugin-poc (see its AGENTS.md):
