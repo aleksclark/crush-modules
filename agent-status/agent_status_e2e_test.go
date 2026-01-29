@@ -154,6 +154,9 @@ const agentStatusSchema = `{
 }`
 
 func TestAgentStatusPluginRegistered(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test in short mode")
+	}
 	testutil.SkipIfE2EDisabled(t)
 
 	term := testutil.NewTestTerminal(t, []string{"--list-plugins"}, 80, 24)
@@ -168,6 +171,9 @@ func TestAgentStatusPluginRegistered(t *testing.T) {
 }
 
 func TestAgentStatusFileWritten(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test in short mode")
+	}
 	testutil.SkipIfE2EDisabled(t)
 
 	// Create isolated environment with custom status dir.
@@ -264,6 +270,9 @@ func TestAgentStatusConfigIntervalRespected(t *testing.T) {
 }
 
 func TestAgentStatusSchemaValidation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test in short mode")
+	}
 	testutil.SkipIfE2EDisabled(t)
 
 	tmpDir := t.TempDir()

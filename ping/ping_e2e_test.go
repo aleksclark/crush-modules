@@ -10,6 +10,9 @@ import (
 
 // TestPingPluginRegistered verifies the ping plugin is registered in the distro.
 func TestPingPluginRegistered(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test in short mode")
+	}
 	testutil.SkipIfE2EDisabled(t)
 
 	// Run crush with --list-plugins flag.
@@ -28,6 +31,9 @@ func TestPingPluginRegistered(t *testing.T) {
 
 // TestPingPluginHelp verifies the ping plugin appears in tool descriptions.
 func TestPingPluginHelp(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping e2e test in short mode")
+	}
 	testutil.SkipIfE2EDisabled(t)
 
 	// Run crush with --help to see available commands.
