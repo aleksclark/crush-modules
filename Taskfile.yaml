@@ -30,7 +30,18 @@ tasks:
       - '{{.OUTPUT_DIR}}/xcrush'
 
   distro:
-    desc: Build a Crush distro with all plugins
+    desc: Build a Crush distro with all production plugins (excludes ping)
+    deps: [build:xcrush]
+    cmds:
+      - |
+        {{.OUTPUT_DIR}}/xcrush build \
+          --crush {{.CRUSH_POC}} \
+          --with ./otlp \
+          --with ./agent-status \
+          --output {{.OUTPUT_DIR}}/crush
+
+  distro:all:
+    desc: Build a Crush distro with ALL plugins (including ping for testing)
     deps: [build:xcrush]
     cmds:
       - |

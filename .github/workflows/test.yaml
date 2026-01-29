@@ -1,0 +1,94 @@
+name: Test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout crush-modules
+        uses: actions/checkout@v4
+
+      - name: Checkout crush-plugin-poc
+        uses: actions/checkout@v4
+        with:
+          repository: charmbracelet/crush
+          ref: feat/plugin-system
+          path: crush-plugin-poc
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: |
+            go.sum
+            ping/go.sum
+            otlp/go.sum
+            agent-status/go.sum
+
+      - name: Update go.mod replacements for CI
+        run: |
+          # Update replace directives to point to checked out crush-plugin-poc
+          for mod in ping otlp agent-status; do
+            cd $mod
+            go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
+            go mod edit -replace github.com/aleksclark/crush-modules=../
+            cd ..
+          done
+
+      - name: Run tests
+        run: |
+          cd ping && go test -v ./...
+          cd ../otlp && go test -v ./...
+          cd ../agent-status && go test -v ./...
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout crush-modules
+        uses: actions/checkout@v4
+
+      - name: Checkout crush-plugin-poc
+        uses: actions/checkout@v4
+        with:
+          repository: charmbracelet/crush
+          ref: feat/plugin-system
+          path: crush-plugin-poc
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Update go.mod replacements for CI
+        run: |
+          for mod in ping otlp agent-status; do
+            cd $mod
+            go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
+            go mod edit -replace github.com/aleksclark/crush-modules=../
+            cd ..
+          done
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: ping
+
+      - name: Run golangci-lint on otlp
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: otlp
+
+      - name: Run golangci-lint on agent-status
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: agent-status

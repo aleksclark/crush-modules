@@ -1,0 +1,86 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+          - os: linux
+            arch: arm64
+            runner: ubuntu-latest
+          - os: darwin
+            arch: amd64
+            runner: macos-latest
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+          - os: windows
+            arch: amd64
+            runner: windows-latest
+
+    steps:
+      - name: Checkout crush-modules
+        uses: actions/checkout@v4
+
+      - name: Checkout crush-plugin-poc
+        uses: actions/checkout@v4
+        with:
+          repository: charmbracelet/crush
+          ref: feat/plugin-system
+          path: crush-plugin-poc
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: |
+            go.sum
+            otlp/go.sum
+            agent-status/go.sum
+
+      - name: Update go.mod replacements for CI
+        shell: bash
+        run: |
+          for mod in otlp agent-status; do
+            cd $mod
+            go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
+            go mod edit -replace github.com/aleksclark/crush-modules=../
+            cd ..
+          done
+
+      - name: Build xcrush
+        shell: bash
+        run: |
+          cd crush-plugin-poc
+          go build -o ../xcrush ./cmd/xcrush
+
+      - name: Build crush with plugins
+        shell: bash
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          ./xcrush build \
+            --crush ./crush-plugin-poc \
+            --with ./otlp \
+            --with ./agent-status \
+            --output ./crush-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crush-${{ matrix.os }}-${{ matrix.arch }}
+          path: crush-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
+          if-no-files-found: error
