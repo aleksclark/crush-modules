@@ -81,10 +81,11 @@ archives:
 
 nfpms:
   # crush-extended debian/rpm packages
-  - id: crush-extended-linux-amd64
+  # Using meta: true to avoid platform expansion
+  - id: crush-extended-nfpm-amd64
     package_name: crush-extended
     file_name_template: "crush-extended_{{ .Version }}_linux_x86_64"
-    builds: []
+    meta: true
     vendor: "Unofficial Crush Build"
     homepage: https://github.com/aleksclark/crush-modules
     maintainer: Aleks Clark <aleks.clark@gmail.com>
@@ -119,10 +120,10 @@ nfpms:
       pkgbase: crush-extended
       packager: Aleks Clark <aleks.clark@gmail.com>
 
-  - id: crush-extended-linux-arm64
+  - id: crush-extended-nfpm-arm64
     package_name: crush-extended
     file_name_template: "crush-extended_{{ .Version }}_linux_arm64"
-    builds: []
+    meta: true
     vendor: "Unofficial Crush Build"
     homepage: https://github.com/aleksclark/crush-modules
     maintainer: Aleks Clark <aleks.clark@gmail.com>
@@ -235,36 +236,9 @@ brews:
       system "#{bin}/xcrush", "--version"
 
 aurs:
-  # crush-extended AUR package
-  - name: crush-extended-bin
-    homepage: https://github.com/aleksclark/crush-modules
-    description: |
-      ⚠️  UNOFFICIAL, UNTESTED BUILD ⚠️
-      Crush AI assistant with community plugins (NOT an official Charm Labs release)
-    maintainers:
-      - 'Aleks Clark <aleks dot clark at gmail dot com>'
-    contributors:
-      - 'Aleks Clark <aleks dot clark at gmail dot com>'
-    license: MIT
-    private_key: '{{ .Env.AUR_SSH_KEY }}'
-    git_url: 'ssh://aur@aur.archlinux.org/crush-extended-bin.git'
-    commit_author:
-      name: Aleks Clark
-      email: aleks.clark@gmail.com
-    commit_msg_template: "chore: update to {{ .Tag }}"
-    package: |-
-      # bin
-      install -Dm755 "./crush-extended" "${pkgdir}/usr/bin/crush-extended"
-      
-      # license
-      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/crush-extended/LICENSE"
-    conflicts:
-      - crush
-    provides:
-      - crush-extended
-    ids:
-      - crush-extended-linux-amd64
-
+  # NOTE: crush-extended AUR package disabled for now due to meta archive compatibility issues
+  # TODO: Re-enable once we figure out how to handle prebuilt binaries with AUR
+  
   # xcrush AUR package
   - name: xcrush-bin
     homepage: https://github.com/aleksclark/crush-modules
