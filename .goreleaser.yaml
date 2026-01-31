@@ -192,33 +192,26 @@ aurs:
       - xcrush-archive
 
   # crush-extended AUR package
-  - name: crush-extended-bin
-    homepage: https://github.com/aleksclark/crush-modules
-    description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts)"
-    maintainers:
-      - 'Aleks Clark <aleks dot clark at gmail dot com>'
-    contributors:
-      - 'Aleks Clark <aleks dot clark at gmail dot com>'
-    license: MIT
-    private_key: '{{ .Env.AUR_SSH_KEY }}'
-    git_url: 'ssh://aur@aur.archlinux.org/crush-extended-bin.git'
-    commit_author:
-      name: Aleks Clark
-      email: aleks.clark@gmail.com
-    commit_msg_template: "chore: update to {{ .Tag }}"
-    conflicts:
-      - crush
-    package: |-
-      # bin
-      install -Dm755 "./crush-extended" "${pkgdir}/usr/bin/crush-extended"
-      
-      # license
-      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/crush-extended/LICENSE"
-    provides:
-      - crush-extended
-    ids:
-      - crush-extended-linux-amd64
-      - crush-extended-linux-arm64
+  # NOTE: Disabled - meta archives don't have platform metadata needed for AUR filtering
+  # TODO: Either build platform-specific archives or use custom PKGBUILD generation
+  # - name: crush-extended-bin
+  #   homepage: https://github.com/aleksclark/crush-modules
+  #   description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts)"
+  #   maintainers:
+  #     - 'Aleks Clark <aleks dot clark at gmail dot com>'
+  #   contributors:
+  #     - 'Aleks Clark <aleks dot clark at gmail dot com>'
+  #   license: MIT
+  #   private_key: '{{ .Env.AUR_SSH_KEY }}'
+  #   git_url: 'ssh://aur@aur.archlinux.org/crush-extended-bin.git'
+  #   commit_author:
+  #     name: Aleks Clark
+  #     email: aleks.clark@gmail.com
+  #   package: |-
+  #     install -Dm755 "./crush-extended" "${pkgdir}/usr/bin/crush-extended"
+  #     install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/crush-extended/LICENSE"
+  #   provides:
+  #     - crush-extended
 
 checksum:
   name_template: 'checksums.txt'
