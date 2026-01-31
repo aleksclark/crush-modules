@@ -43,7 +43,7 @@ archives:
     name_template: "crush-extended_{{ .Version }}_linux_x86_64"
     builds: []
     files:
-      - src: dist/crush-extended_linux_amd64
+      - src: build/crush-extended_linux_amd64
         dst: crush-extended
         strip_parent: true
       - LICENSE*
@@ -54,7 +54,7 @@ archives:
     name_template: "crush-extended_{{ .Version }}_linux_arm64"
     builds: []
     files:
-      - src: dist/crush-extended_linux_arm64
+      - src: build/crush-extended_linux_arm64
         dst: crush-extended
         strip_parent: true
       - LICENSE*
@@ -65,7 +65,7 @@ archives:
     name_template: "crush-extended_{{ .Version }}_darwin_x86_64"
     builds: []
     files:
-      - src: dist/crush-extended_darwin_amd64
+      - src: build/crush-extended_darwin_amd64
         dst: crush-extended
         strip_parent: true
       - LICENSE*
@@ -76,7 +76,7 @@ archives:
     name_template: "crush-extended_{{ .Version }}_darwin_arm64"
     builds: []
     files:
-      - src: dist/crush-extended_darwin_arm64
+      - src: build/crush-extended_darwin_arm64
         dst: crush-extended
         strip_parent: true
       - LICENSE*
@@ -112,7 +112,7 @@ nfpms:
       - rpm
     bindir: /usr/bin
     contents:
-      - src: dist/crush-extended_linux_amd64
+      - src: build/crush-extended_linux_amd64
         dst: /usr/bin/crush-extended
         file_info:
           mode: 0755
@@ -150,7 +150,7 @@ nfpms:
       - rpm
     bindir: /usr/bin
     contents:
-      - src: dist/crush-extended_linux_arm64
+      - src: build/crush-extended_linux_arm64
         dst: /usr/bin/crush-extended
         file_info:
           mode: 0755

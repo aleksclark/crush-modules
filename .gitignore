@@ -4,3 +4,4 @@ dist
 *.rpm
 *.tar.gz
 *.zip
+build
