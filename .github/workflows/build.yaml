@@ -49,11 +49,12 @@ jobs:
             go.sum
             otlp/go.sum
             agent-status/go.sum
+            periodic-prompts/go.sum
 
       - name: Update go.mod replacements for CI
         shell: bash
         run: |
-          for mod in otlp agent-status; do
+          for mod in otlp agent-status periodic-prompts; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../
@@ -76,6 +77,7 @@ jobs:
             --crush ./crush-plugin-poc \
             --with ./otlp \
             --with ./agent-status \
+            --with ./periodic-prompts \
             --output ./crush-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
 
       - name: Upload artifact

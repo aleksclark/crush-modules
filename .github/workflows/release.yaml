@@ -22,12 +22,21 @@ jobs:
         with:
           repository: aleksclark/crush
           ref: feat/plugin-system
-          path: ../crush-plugin-poc
+          path: crush-plugin-poc
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
+
+      - name: Update go.mod replacements for CI
+        run: |
+          for mod in otlp agent-status periodic-prompts; do
+            cd $mod
+            go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
+            go mod edit -replace github.com/aleksclark/crush-modules=../
+            cd ..
+          done
 
       - name: Generate CalVer tag
         id: calver

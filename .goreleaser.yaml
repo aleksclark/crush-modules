@@ -7,7 +7,7 @@ before:
 builds:
   # xcrush - the build tool for creating custom Crush distributions
   - id: xcrush
-    dir: ../crush-plugin-poc
+    dir: ./crush-plugin-poc
     main: ./cmd/xcrush
     binary: xcrush
     env:

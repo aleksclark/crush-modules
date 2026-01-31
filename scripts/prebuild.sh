@@ -5,16 +5,16 @@ set -e
 # Builds crush-extended binaries for all target platforms before goreleaser runs
 
 echo "Building xcrush..."
-cd ../crush-plugin-poc
-go build -o ../crush-modules/dist/xcrush ./cmd/xcrush
+cd crush-plugin-poc
+go build -o ../dist/xcrush ./cmd/xcrush
 
 echo "Building crush-extended for all platforms..."
-cd ../crush-modules
+cd ..
 
 # Linux AMD64
 echo "  - linux/amd64..."
 ./dist/xcrush build \
-    --crush ../crush-plugin-poc \
+    --crush ./crush-plugin-poc \
     --with ./otlp \
     --with ./agent-status \
     --with ./periodic-prompts \
@@ -23,7 +23,7 @@ echo "  - linux/amd64..."
 # Linux ARM64
 echo "  - linux/arm64..."
 GOARCH=arm64 ./dist/xcrush build \
-    --crush ../crush-plugin-poc \
+    --crush ./crush-plugin-poc \
     --with ./otlp \
     --with ./agent-status \
     --with ./periodic-prompts \
@@ -32,7 +32,7 @@ GOARCH=arm64 ./dist/xcrush build \
 # Darwin AMD64
 echo "  - darwin/amd64..."
 GOOS=darwin ./dist/xcrush build \
-    --crush ../crush-plugin-poc \
+    --crush ./crush-plugin-poc \
     --with ./otlp \
     --with ./agent-status \
     --with ./periodic-prompts \
@@ -41,7 +41,7 @@ GOOS=darwin ./dist/xcrush build \
 # Darwin ARM64
 echo "  - darwin/arm64..."
 GOOS=darwin GOARCH=arm64 ./dist/xcrush build \
-    --crush ../crush-plugin-poc \
+    --crush ./crush-plugin-poc \
     --with ./otlp \
     --with ./agent-status \
     --with ./periodic-prompts \

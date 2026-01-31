@@ -28,10 +28,11 @@ jobs:
             ping/go.sum
             otlp/go.sum
             agent-status/go.sum
+            periodic-prompts/go.sum
 
       - name: Update go.mod replacements for CI
         run: |
-          for mod in ping otlp agent-status; do
+          for mod in ping otlp agent-status periodic-prompts; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../
@@ -50,6 +51,7 @@ jobs:
             --with ./ping \
             --with ./otlp \
             --with ./agent-status \
+            --with ./periodic-prompts \
             --output ./dist/crush
 
       - name: Run E2E tests

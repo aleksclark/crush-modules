@@ -30,11 +30,12 @@ jobs:
             ping/go.sum
             otlp/go.sum
             agent-status/go.sum
+            periodic-prompts/go.sum
 
       - name: Update go.mod replacements for CI
         run: |
           # Update replace directives to point to checked out crush-plugin-poc
-          for mod in ping otlp agent-status; do
+          for mod in ping otlp agent-status periodic-prompts; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../
@@ -48,3 +49,4 @@ jobs:
           cd ping && go test -v ./...
           cd ../otlp && go test -v ./...
           cd ../agent-status && go test -v ./...
+          cd ../periodic-prompts && go test -v ./...
