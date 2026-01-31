@@ -80,81 +80,9 @@ archives:
       - README*
 
 nfpms:
-  # crush-extended debian/rpm packages
-  # Using meta: true to avoid platform expansion
-  - id: crush-extended-nfpm-amd64
-    package_name: crush-extended
-    file_name_template: "crush-extended_{{ .Version }}_linux_x86_64"
-    meta: true
-    vendor: "Unofficial Crush Build"
-    homepage: https://github.com/aleksclark/crush-modules
-    maintainer: Aleks Clark <aleks.clark@gmail.com>
-    description: |
-      ⚠️  UNOFFICIAL, UNTESTED BUILD ⚠️
-      
-      Crush AI assistant with additional community plugins.
-      
-      This is NOT an official Charm Labs release. This extended build includes
-      experimental plugins that have not been reviewed or tested by Charm Labs.
-      Use at your own risk.
-      
-      Included plugins:
-      - otlp: OpenTelemetry tracing
-      - agent-status: Status file reporting
-      - periodic-prompts: Scheduled prompt execution
-      
-      For the official Crush release, install 'crush' instead.
-    license: MIT
-    formats:
-      - deb
-      - rpm
-    bindir: /usr/bin
-    contents:
-      - src: build/crush-extended_linux_amd64
-        dst: /usr/bin/crush-extended
-        file_info:
-          mode: 0755
-    conflicts:
-      - crush
-    archlinux:
-      pkgbase: crush-extended
-      packager: Aleks Clark <aleks.clark@gmail.com>
-
-  - id: crush-extended-nfpm-arm64
-    package_name: crush-extended
-    file_name_template: "crush-extended_{{ .Version }}_linux_arm64"
-    meta: true
-    vendor: "Unofficial Crush Build"
-    homepage: https://github.com/aleksclark/crush-modules
-    maintainer: Aleks Clark <aleks.clark@gmail.com>
-    description: |
-      ⚠️  UNOFFICIAL, UNTESTED BUILD ⚠️
-      
-      Crush AI assistant with additional community plugins.
-      
-      This is NOT an official Charm Labs release. This extended build includes
-      experimental plugins that have not been reviewed or tested by Charm Labs.
-      Use at your own risk.
-      
-      Included plugins:
-      - otlp: OpenTelemetry tracing
-      - agent-status: Status file reporting
-      - periodic-prompts: Scheduled prompt execution
-      
-      For the official Crush release, install 'crush' instead.
-    license: MIT
-    formats:
-      - deb
-      - rpm
-    bindir: /usr/bin
-    contents:
-      - src: build/crush-extended_linux_arm64
-        dst: /usr/bin/crush-extended
-        file_info:
-          mode: 0755
-    conflicts:
-      - crush
-
+  # NOTE: crush-extended nfpms disabled temporarily due to meta/builds:[] platform expansion issues
+  # TODO: Re-enable once we figure out how to prevent duplicate artifacts
+  
   # xcrush packages
   - id: xcrush-pkg
     builds:
@@ -185,34 +113,9 @@ nfpms:
     bindir: /usr/bin
 
 brews:
-  - ids:
-      - crush-extended-darwin-amd64
-      - crush-extended-darwin-arm64
-    name: crush-extended
-    repository:
-      owner: aleksclark
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    commit_msg_template: "chore(brew): update {{ .ProjectName }} to {{ .Tag }}"
-    directory: Formula
-    homepage: https://github.com/aleksclark/crush-modules
-    description: |
-      ⚠️  UNOFFICIAL, UNTESTED BUILD ⚠️
-      Crush AI assistant with community plugins (NOT an official Charm Labs release)
-    license: MIT
-    conflicts:
-      - crush
-    install: |
-      bin.install "crush-extended"
-    test: |
-      system "#{bin}/crush-extended", "--version"
-    caveats: |
-      ⚠️  WARNING: This is an UNOFFICIAL build of Crush with experimental plugins.
-      This is NOT supported by Charm Labs. Use at your own risk.
-
+  # NOTE: crush-extended Homebrew disabled temporarily due to meta archive compatibility issues
+  # TODO: Re-enable once we figure out how to handle prebuilt binaries with Homebrew
+  
   - ids:
       - xcrush-archive
     name: xcrush
