@@ -135,34 +135,29 @@ brews:
       system "#{bin}/xcrush", "--version"
 
   # crush-extended Homebrew formula
-  # Note: Using meta archives - goreleaser will create a universal formula
-  - ids:
-      - crush-extended-darwin-amd64
-      - crush-extended-darwin-arm64
-      - crush-extended-linux-amd64
-      - crush-extended-linux-arm64
-    name: crush-extended
-    repository:
-      owner: aleksclark
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    commit_msg_template: "chore(brew): update crush-extended to {{ .Tag }}"
-    directory: Formula
-    homepage: https://github.com/aleksclark/crush-modules
-    description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts)"
-    license: MIT
-    conflicts:
-      - crush
-    install: |
-      bin.install "crush-extended"
-    test: |
-      system "#{bin}/crush-extended", "--version"
-    caveats: |
-      WARNING: This is an UNOFFICIAL build of Crush with experimental plugins.
-      This is NOT supported by Charm Labs. Use at your own risk.
+  # NOTE: Disabled - meta archives don't have goos/goarch metadata for Homebrew filtering
+  # TODO: Re-enable once we can build crush-extended with goreleaser directly
+  # - ids:
+  #     - crush-extended-darwin-amd64
+  #     - crush-extended-darwin-arm64
+  #     - crush-extended-linux-amd64
+  #     - crush-extended-linux-arm64
+  #   name: crush-extended
+  #   repository:
+  #     owner: aleksclark
+  #     name: homebrew-tap
+  #     token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+  #   commit_author:
+  #     name: goreleaserbot
+  #     email: bot@goreleaser.com
+  #   directory: Formula
+  #   homepage: https://github.com/aleksclark/crush-modules
+  #   description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts)"
+  #   license: MIT
+  #   conflicts:
+  #     - crush
+  #   install: |
+  #     bin.install "crush-extended"
 
 aurs:
   # xcrush AUR package
