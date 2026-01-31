@@ -113,14 +113,58 @@ nfpms:
     bindir: /usr/bin
 
 brews:
-  # NOTE: All brews disabled temporarily - HOMEBREW_TAP_GITHUB_TOKEN needs better permissions
-  # TODO: Re-enable once token is fixed
-  []
+  # xcrush Homebrew formula
+  - ids:
+      - xcrush-archive
+    name: xcrush
+    repository:
+      owner: aleksclark
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "chore(brew): update {{ .ProjectName }} to {{ .Tag }}"
+    directory: Formula
+    homepage: https://github.com/aleksclark/crush-modules
+    description: "Unofficial build tool for creating custom Crush distributions with plugins"
+    license: MIT
+    install: |
+      bin.install "xcrush"
+    test: |
+      system "#{bin}/xcrush", "--version"
+
+  # crush-extended Homebrew formula
+  # Note: Using meta archives - goreleaser will create a universal formula
+  - ids:
+      - crush-extended-darwin-amd64
+      - crush-extended-darwin-arm64
+      - crush-extended-linux-amd64
+      - crush-extended-linux-arm64
+    name: crush-extended
+    repository:
+      owner: aleksclark
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "chore(brew): update crush-extended to {{ .Tag }}"
+    directory: Formula
+    homepage: https://github.com/aleksclark/crush-modules
+    description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts)"
+    license: MIT
+    conflicts:
+      - crush
+    install: |
+      bin.install "crush-extended"
+    test: |
+      system "#{bin}/crush-extended", "--version"
+    caveats: |
+      WARNING: This is an UNOFFICIAL build of Crush with experimental plugins.
+      This is NOT supported by Charm Labs. Use at your own risk.
 
 aurs:
-  # NOTE: crush-extended AUR package disabled for now due to meta archive compatibility issues
-  # TODO: Re-enable once we figure out how to handle prebuilt binaries with AUR
-  
   # xcrush AUR package
   - name: xcrush-bin
     homepage: https://github.com/aleksclark/crush-modules
@@ -146,6 +190,35 @@ aurs:
       - xcrush
     ids:
       - xcrush-archive
+
+  # crush-extended AUR package
+  - name: crush-extended-bin
+    homepage: https://github.com/aleksclark/crush-modules
+    description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts)"
+    maintainers:
+      - 'Aleks Clark <aleks dot clark at gmail dot com>'
+    contributors:
+      - 'Aleks Clark <aleks dot clark at gmail dot com>'
+    license: MIT
+    private_key: '{{ .Env.AUR_SSH_KEY }}'
+    git_url: 'ssh://aur@aur.archlinux.org/crush-extended-bin.git'
+    commit_author:
+      name: Aleks Clark
+      email: aleks.clark@gmail.com
+    commit_msg_template: "chore: update to {{ .Tag }}"
+    conflicts:
+      - crush
+    package: |-
+      # bin
+      install -Dm755 "./crush-extended" "${pkgdir}/usr/bin/crush-extended"
+      
+      # license
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/crush-extended/LICENSE"
+    provides:
+      - crush-extended
+    ids:
+      - crush-extended-linux-amd64
+      - crush-extended-linux-arm64
 
 checksum:
   name_template: 'checksums.txt'
