@@ -48,7 +48,6 @@ archives:
         strip_parent: true
       - LICENSE*
       - README*
-    rlcp: true
 
   - id: crush-extended-linux-arm64
     format: tar.gz
@@ -60,7 +59,6 @@ archives:
         strip_parent: true
       - LICENSE*
       - README*
-    rlcp: true
 
   - id: crush-extended-darwin-amd64
     format: tar.gz
@@ -72,7 +70,6 @@ archives:
         strip_parent: true
       - LICENSE*
       - README*
-    rlcp: true
 
   - id: crush-extended-darwin-arm64
     format: tar.gz
@@ -84,7 +81,6 @@ archives:
         strip_parent: true
       - LICENSE*
       - README*
-    rlcp: true
 
 nfpms:
   # crush-extended debian/rpm packages
