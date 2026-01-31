@@ -113,30 +113,9 @@ nfpms:
     bindir: /usr/bin
 
 brews:
-  # NOTE: crush-extended Homebrew disabled temporarily due to meta archive compatibility issues
-  # TODO: Re-enable once we figure out how to handle prebuilt binaries with Homebrew
-  
-  - ids:
-      - xcrush-archive
-    name: xcrush
-    repository:
-      owner: aleksclark
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    commit_msg_template: "chore(brew): update {{ .ProjectName }} to {{ .Tag }}"
-    directory: Formula
-    homepage: https://github.com/aleksclark/crush-modules
-    description: |
-      ⚠️  UNOFFICIAL TOOL ⚠️
-      Build tool for creating custom Crush distributions (NOT an official Charm Labs tool)
-    license: MIT
-    install: |
-      bin.install "xcrush"
-    test: |
-      system "#{bin}/xcrush", "--version"
+  # NOTE: All brews disabled temporarily - HOMEBREW_TAP_GITHUB_TOKEN needs better permissions
+  # TODO: Re-enable once token is fixed
+  []
 
 aurs:
   # NOTE: crush-extended AUR package disabled for now due to meta archive compatibility issues
@@ -145,9 +124,7 @@ aurs:
   # xcrush AUR package
   - name: xcrush-bin
     homepage: https://github.com/aleksclark/crush-modules
-    description: |
-      ⚠️  UNOFFICIAL TOOL ⚠️
-      Build tool for creating custom Crush distributions (NOT an official Charm Labs tool)
+    description: "Unofficial build tool for creating custom Crush distributions with plugins"
     maintainers:
       - 'Aleks Clark <aleks dot clark at gmail dot com>'
     contributors:
