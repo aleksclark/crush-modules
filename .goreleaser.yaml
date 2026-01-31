@@ -37,48 +37,45 @@ archives:
       - LICENSE*
       - README*
 
-  # crush-extended - manually packaged from pre-built binaries
+  # crush-extended - single archive with all prebuilt binaries
+  # Using meta flag to avoid goos/goarch expansion
   - id: crush-extended-linux-amd64
     format: tar.gz
     name_template: "crush-extended_{{ .Version }}_linux_x86_64"
-    builds: []
+    meta: true
     files:
       - src: build/crush-extended_linux_amd64
         dst: crush-extended
-        strip_parent: true
       - LICENSE*
       - README*
 
   - id: crush-extended-linux-arm64
     format: tar.gz
     name_template: "crush-extended_{{ .Version }}_linux_arm64"
-    builds: []
+    meta: true
     files:
       - src: build/crush-extended_linux_arm64
         dst: crush-extended
-        strip_parent: true
       - LICENSE*
       - README*
 
   - id: crush-extended-darwin-amd64
     format: tar.gz
     name_template: "crush-extended_{{ .Version }}_darwin_x86_64"
-    builds: []
+    meta: true
     files:
       - src: build/crush-extended_darwin_amd64
         dst: crush-extended
-        strip_parent: true
       - LICENSE*
       - README*
 
   - id: crush-extended-darwin-arm64
     format: tar.gz
     name_template: "crush-extended_{{ .Version }}_darwin_arm64"
-    builds: []
+    meta: true
     files:
       - src: build/crush-extended_darwin_arm64
         dst: crush-extended
-        strip_parent: true
       - LICENSE*
       - README*
 
