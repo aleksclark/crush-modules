@@ -108,12 +108,60 @@ A simple test plugin for development and testing purposes.
 
 ## Installation
 
-### Prerequisites
+### From GitHub Releases
 
-- Go 1.23 or later
-- [Task](https://taskfile.dev/) (go-task)
+⚠️ **UNOFFICIAL BUILD** - This is not an official Charm Labs release.
+
+Download pre-built binaries:
+
+```bash
+# Linux/macOS - tar.gz archive
+curl -LO https://github.com/aleksclark/crush-modules/releases/latest/download/crush-extended_VERSION_OS_ARCH.tar.gz
+tar xzf crush-extended_VERSION_OS_ARCH.tar.gz
+sudo mv crush-extended /usr/local/bin/
+```
+
+### Package Managers
+
+**Homebrew (macOS/Linux):**
+```bash
+brew tap aleksclark/tap
+brew install crush-extended
+# or
+brew install xcrush
+```
+
+**AUR (Arch Linux):**
+```bash
+# Using yay
+yay -S crush-extended-bin
+
+# Using paru  
+paru -S crush-extended-bin
+
+# Manual installation
+git clone https://aur.archlinux.org/crush-extended-bin.git
+cd crush-extended-bin
+makepkg -si
+```
+
+**Debian/Ubuntu (.deb):**
+```bash
+curl -LO https://github.com/aleksclark/crush-modules/releases/latest/download/crush-extended_VERSION_linux_x86_64.deb
+sudo dpkg -i crush-extended_VERSION_linux_x86_64.deb
+```
+
+**Fedora/RHEL (.rpm):**
+```bash
+curl -LO https://github.com/aleksclark/crush-modules/releases/latest/download/crush-extended_VERSION_linux_x86_64.rpm
+sudo rpm -i crush-extended_VERSION_linux_x86_64.rpm
+```
 
 ### Building from Source
+
+**Prerequisites:**
+- Go 1.23 or later
+- [Task](https://taskfile.dev/) (go-task)
 
 1. Clone this repository alongside the Crush source:
    ```bash

@@ -1,0 +1,337 @@
+version: 2
+
+before:
+  hooks:
+    - ./scripts/prebuild.sh
+
+builds:
+  # xcrush - the build tool for creating custom Crush distributions
+  - id: xcrush
+    dir: ../crush-plugin-poc
+    main: ./cmd/xcrush
+    binary: xcrush
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - id: xcrush-archive
+    builds:
+      - xcrush
+    name_template: >-
+      xcrush_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    format: tar.gz
+    files:
+      - LICENSE*
+      - README*
+
+  # crush-extended - manually packaged from pre-built binaries
+  - id: crush-extended-linux-amd64
+    format: tar.gz
+    name_template: "crush-extended_{{ .Version }}_linux_x86_64"
+    builds: []
+    files:
+      - src: dist/crush-extended_linux_amd64
+        dst: crush-extended
+        strip_parent: true
+      - LICENSE*
+      - README*
+    rlcp: true
+
+  - id: crush-extended-linux-arm64
+    format: tar.gz
+    name_template: "crush-extended_{{ .Version }}_linux_arm64"
+    builds: []
+    files:
+      - src: dist/crush-extended_linux_arm64
+        dst: crush-extended
+        strip_parent: true
+      - LICENSE*
+      - README*
+    rlcp: true
+
+  - id: crush-extended-darwin-amd64
+    format: tar.gz
+    name_template: "crush-extended_{{ .Version }}_darwin_x86_64"
+    builds: []
+    files:
+      - src: dist/crush-extended_darwin_amd64
+        dst: crush-extended
+        strip_parent: true
+      - LICENSE*
+      - README*
+    rlcp: true
+
+  - id: crush-extended-darwin-arm64
+    format: tar.gz
+    name_template: "crush-extended_{{ .Version }}_darwin_arm64"
+    builds: []
+    files:
+      - src: dist/crush-extended_darwin_arm64
+        dst: crush-extended
+        strip_parent: true
+      - LICENSE*
+      - README*
+    rlcp: true
+
+nfpms:
+  # crush-extended debian/rpm packages
+  - id: crush-extended-linux-amd64
+    package_name: crush-extended
+    file_name_template: "crush-extended_{{ .Version }}_linux_x86_64"
+    builds: []
+    vendor: "Unofficial Crush Build"
+    homepage: https://github.com/aleksclark/crush-modules
+    maintainer: Aleks Clark <aleks.clark@gmail.com>
+    description: |
+      ⚠️  UNOFFICIAL, UNTESTED BUILD ⚠️
+      
+      Crush AI assistant with additional community plugins.
+      
+      This is NOT an official Charm Labs release. This extended build includes
+      experimental plugins that have not been reviewed or tested by Charm Labs.
+      Use at your own risk.
+      
+      Included plugins:
+      - otlp: OpenTelemetry tracing
+      - agent-status: Status file reporting
+      - periodic-prompts: Scheduled prompt execution
+      
+      For the official Crush release, install 'crush' instead.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    contents:
+      - src: dist/crush-extended_linux_amd64
+        dst: /usr/bin/crush-extended
+        file_info:
+          mode: 0755
+    conflicts:
+      - crush
+    archlinux:
+      pkgbase: crush-extended
+      packager: Aleks Clark <aleks.clark@gmail.com>
+
+  - id: crush-extended-linux-arm64
+    package_name: crush-extended
+    file_name_template: "crush-extended_{{ .Version }}_linux_arm64"
+    builds: []
+    vendor: "Unofficial Crush Build"
+    homepage: https://github.com/aleksclark/crush-modules
+    maintainer: Aleks Clark <aleks.clark@gmail.com>
+    description: |
+      ⚠️  UNOFFICIAL, UNTESTED BUILD ⚠️
+      
+      Crush AI assistant with additional community plugins.
+      
+      This is NOT an official Charm Labs release. This extended build includes
+      experimental plugins that have not been reviewed or tested by Charm Labs.
+      Use at your own risk.
+      
+      Included plugins:
+      - otlp: OpenTelemetry tracing
+      - agent-status: Status file reporting
+      - periodic-prompts: Scheduled prompt execution
+      
+      For the official Crush release, install 'crush' instead.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    contents:
+      - src: dist/crush-extended_linux_arm64
+        dst: /usr/bin/crush-extended
+        file_info:
+          mode: 0755
+    conflicts:
+      - crush
+
+  # xcrush packages
+  - id: xcrush-pkg
+    builds:
+      - xcrush
+    package_name: xcrush
+    file_name_template: >-
+      xcrush_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    vendor: "Unofficial Crush Build Tool"
+    homepage: https://github.com/aleksclark/crush-modules
+    maintainer: Aleks Clark <aleks.clark@gmail.com>
+    description: |
+      ⚠️  UNOFFICIAL TOOL ⚠️
+      
+      Build tool for creating custom Crush distributions with plugins.
+      
+      This is NOT an official Charm Labs tool. Use at your own risk.
+      
+      xcrush allows you to build custom Crush binaries with selected plugins.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+
+brews:
+  - ids:
+      - crush-extended-darwin-amd64
+      - crush-extended-darwin-arm64
+    name: crush-extended
+    repository:
+      owner: aleksclark
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "chore(brew): update {{ .ProjectName }} to {{ .Tag }}"
+    directory: Formula
+    homepage: https://github.com/aleksclark/crush-modules
+    description: |
+      ⚠️  UNOFFICIAL, UNTESTED BUILD ⚠️
+      Crush AI assistant with community plugins (NOT an official Charm Labs release)
+    license: MIT
+    conflicts:
+      - crush
+    install: |
+      bin.install "crush-extended"
+    test: |
+      system "#{bin}/crush-extended", "--version"
+    caveats: |
+      ⚠️  WARNING: This is an UNOFFICIAL build of Crush with experimental plugins.
+      This is NOT supported by Charm Labs. Use at your own risk.
+
+  - ids:
+      - xcrush-archive
+    name: xcrush
+    repository:
+      owner: aleksclark
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "chore(brew): update {{ .ProjectName }} to {{ .Tag }}"
+    directory: Formula
+    homepage: https://github.com/aleksclark/crush-modules
+    description: |
+      ⚠️  UNOFFICIAL TOOL ⚠️
+      Build tool for creating custom Crush distributions (NOT an official Charm Labs tool)
+    license: MIT
+    install: |
+      bin.install "xcrush"
+    test: |
+      system "#{bin}/xcrush", "--version"
+
+aurs:
+  # crush-extended AUR package
+  - name: crush-extended-bin
+    homepage: https://github.com/aleksclark/crush-modules
+    description: |
+      ⚠️  UNOFFICIAL, UNTESTED BUILD ⚠️
+      Crush AI assistant with community plugins (NOT an official Charm Labs release)
+    maintainers:
+      - 'Aleks Clark <aleks dot clark at gmail dot com>'
+    contributors:
+      - 'Aleks Clark <aleks dot clark at gmail dot com>'
+    license: MIT
+    private_key: '{{ .Env.AUR_SSH_KEY }}'
+    git_url: 'ssh://aur@aur.archlinux.org/crush-extended-bin.git'
+    commit_author:
+      name: Aleks Clark
+      email: aleks.clark@gmail.com
+    commit_msg_template: "chore: update to {{ .Tag }}"
+    package: |-
+      # bin
+      install -Dm755 "./crush-extended" "${pkgdir}/usr/bin/crush-extended"
+      
+      # license
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/crush-extended/LICENSE"
+    conflicts:
+      - crush
+    provides:
+      - crush-extended
+    ids:
+      - crush-extended-linux-amd64
+
+  # xcrush AUR package
+  - name: xcrush-bin
+    homepage: https://github.com/aleksclark/crush-modules
+    description: |
+      ⚠️  UNOFFICIAL TOOL ⚠️
+      Build tool for creating custom Crush distributions (NOT an official Charm Labs tool)
+    maintainers:
+      - 'Aleks Clark <aleks dot clark at gmail dot com>'
+    contributors:
+      - 'Aleks Clark <aleks dot clark at gmail dot com>'
+    license: MIT
+    private_key: '{{ .Env.AUR_SSH_KEY }}'
+    git_url: 'ssh://aur@aur.archlinux.org/xcrush-bin.git'
+    commit_author:
+      name: Aleks Clark
+      email: aleks.clark@gmail.com
+    commit_msg_template: "chore: update to {{ .Tag }}"
+    package: |-
+      # bin
+      install -Dm755 "./xcrush" "${pkgdir}/usr/bin/xcrush"
+      
+      # license
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/xcrush/LICENSE"
+    provides:
+      - xcrush
+    ids:
+      - xcrush-archive
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: aleksclark
+    name: crush-modules
+  draft: false
+  prerelease: auto
+  mode: append
+  header: |
+    ## ⚠️  UNOFFICIAL BUILDS - USE AT YOUR OWN RISK
+    
+    These are **NOT** official Charm Labs releases. These builds include experimental
+    community plugins that have not been reviewed or tested by Charm Labs.
+    
+    ### What's included:
+    
+    - **crush-extended**: Crush with otlp, agent-status, and periodic-prompts plugins
+    - **xcrush**: Build tool for creating custom Crush distributions
+    
+    For the official Crush release, visit: https://github.com/charmbracelet/crush

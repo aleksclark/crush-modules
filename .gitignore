@@ -1,2 +1,6 @@
 dist
 .task
+*.deb
+*.rpm
+*.tar.gz
+*.zip

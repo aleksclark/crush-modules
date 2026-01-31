@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"charm.land/fantasy"
+	"github.com/charmbracelet/crush/plugin"
 	"github.com/stretchr/testify/require"
 )
 
@@ -217,4 +218,110 @@ func TestInvalidCronSchedule(t *testing.T) {
 
 	<-ctx.Done()
 	require.NoError(t, hook.Stop())
+}
+
+func TestDialogCreation(t *testing.T) {
+	// Not parallel - modifies global singleton.
+
+	// Create a hook instance first.
+	cfg := Config{
+		Prompts: []PromptConfig{
+			{File: "test1.md", Schedule: "*/5 * * * *", Name: "Test 1"},
+			{File: "test2.md", Schedule: "0 * * * *", Name: "Test 2"},
+		},
+	}
+	_, err := NewHook(nil, cfg)
+	require.NoError(t, err)
+
+	// Create the dialog.
+	dialog, err := NewDialog(nil)
+	require.NoError(t, err)
+	require.NotNil(t, dialog)
+
+	require.Equal(t, DialogID, dialog.ID())
+	require.Equal(t, "Periodic Prompts", dialog.Title())
+
+	// Check initial view.
+	view := dialog.View()
+	require.Contains(t, view, "Enable All")
+	require.Contains(t, view, "Test 1")
+	require.Contains(t, view, "Test 2")
+	require.Contains(t, view, "*/5 * * * *")
+}
+
+func TestDialogNavigation(t *testing.T) {
+	// Not parallel - modifies global singleton.
+
+	cfg := Config{
+		Prompts: []PromptConfig{
+			{File: "a.md", Schedule: "* * * * *", Name: "A"},
+			{File: "b.md", Schedule: "* * * * *", Name: "B"},
+		},
+	}
+	_, err := NewHook(nil, cfg)
+	require.NoError(t, err)
+
+	dialog, err := NewDialog(nil)
+	require.NoError(t, err)
+
+	d := dialog.(*Dialog)
+
+	// Initial cursor at 0 (all toggle).
+	require.Equal(t, 0, d.cursor)
+
+	// Move down.
+	done, _, err := dialog.Update(plugin.KeyEvent{Key: "down"})
+	require.NoError(t, err)
+	require.False(t, done)
+	require.Equal(t, 1, d.cursor)
+
+	// Move down again.
+	done, _, err = dialog.Update(plugin.KeyEvent{Key: "down"})
+	require.NoError(t, err)
+	require.False(t, done)
+	require.Equal(t, 2, d.cursor)
+
+	// Move up.
+	done, _, err = dialog.Update(plugin.KeyEvent{Key: "up"})
+	require.NoError(t, err)
+	require.False(t, done)
+	require.Equal(t, 1, d.cursor)
+
+	// Escape closes.
+	done, _, err = dialog.Update(plugin.KeyEvent{Key: "esc"})
+	require.NoError(t, err)
+	require.True(t, done)
+}
+
+func TestDialogToggle(t *testing.T) {
+	// Not parallel - modifies global singleton.
+
+	cfg := Config{
+		Prompts: []PromptConfig{
+			{File: "a.md", Schedule: "* * * * *", Name: "A"},
+		},
+	}
+	hook, err := NewHook(nil, cfg)
+	require.NoError(t, err)
+
+	dialog, err := NewDialog(nil)
+	require.NoError(t, err)
+
+	d := dialog.(*Dialog)
+
+	// Initially disabled.
+	require.False(t, d.allEnabled)
+	require.False(t, hook.IsEnabled())
+
+	// Toggle all (cursor at 0).
+	_, _, err = dialog.Update(plugin.KeyEvent{Key: "enter"})
+	require.NoError(t, err)
+	require.True(t, d.allEnabled)
+	require.True(t, hook.IsEnabled())
+
+	// Toggle again.
+	_, _, err = dialog.Update(plugin.KeyEvent{Key: "space"})
+	require.NoError(t, err)
+	require.False(t, d.allEnabled)
+	require.False(t, hook.IsEnabled())
 }
