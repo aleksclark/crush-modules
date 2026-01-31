@@ -31,12 +31,22 @@ jobs:
 
       - name: Update go.mod replacements for CI
         run: |
+          # Update root module replacements
+          go mod edit -replace github.com/charmbracelet/crush=./crush-plugin-poc
+          go mod edit -replace github.com/aleksclark/crush-modules/agent-status=./agent-status
+          go mod edit -replace github.com/aleksclark/crush-modules/otlp=./otlp
+          go mod edit -replace github.com/aleksclark/crush-modules/periodic-prompts=./periodic-prompts
+          
+          # Update plugin module replacements
           for mod in otlp agent-status periodic-prompts; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../
             cd ..
           done
+          
+          # Tidy to update go.sum
+          go mod tidy
 
       - name: Generate CalVer tag
         id: calver

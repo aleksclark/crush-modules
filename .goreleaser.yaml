@@ -1,15 +1,26 @@
 version: 2
 
-before:
-  hooks:
-    - ./scripts/prebuild.sh
-
 builds:
   # xcrush - the build tool for creating custom Crush distributions
   - id: xcrush
     dir: ./crush-plugin-poc
     main: ./cmd/xcrush
     binary: xcrush
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+  # crush-extended - Crush with community plugins
+  - id: crush-extended
+    main: ./cmd/crush-extended
+    binary: crush-extended
     env:
       - CGO_ENABLED=0
     goos:
@@ -37,52 +48,22 @@ archives:
       - LICENSE*
       - README*
 
-  # crush-extended - single archive with all prebuilt binaries
-  # Using meta flag to avoid goos/goarch expansion
-  - id: crush-extended-linux-amd64
+  - id: crush-extended-archive
+    builds:
+      - crush-extended
+    name_template: >-
+      crush-extended_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
     format: tar.gz
-    name_template: "crush-extended_{{ .Version }}_linux_x86_64"
-    meta: true
     files:
-      - src: build/crush-extended_linux_amd64
-        dst: crush-extended
-      - LICENSE*
-      - README*
-
-  - id: crush-extended-linux-arm64
-    format: tar.gz
-    name_template: "crush-extended_{{ .Version }}_linux_arm64"
-    meta: true
-    files:
-      - src: build/crush-extended_linux_arm64
-        dst: crush-extended
-      - LICENSE*
-      - README*
-
-  - id: crush-extended-darwin-amd64
-    format: tar.gz
-    name_template: "crush-extended_{{ .Version }}_darwin_x86_64"
-    meta: true
-    files:
-      - src: build/crush-extended_darwin_amd64
-        dst: crush-extended
-      - LICENSE*
-      - README*
-
-  - id: crush-extended-darwin-arm64
-    format: tar.gz
-    name_template: "crush-extended_{{ .Version }}_darwin_arm64"
-    meta: true
-    files:
-      - src: build/crush-extended_darwin_arm64
-        dst: crush-extended
       - LICENSE*
       - README*
 
 nfpms:
-  # NOTE: crush-extended nfpms disabled temporarily due to meta/builds:[] platform expansion issues
-  # TODO: Re-enable once we figure out how to prevent duplicate artifacts
-  
   # xcrush packages
   - id: xcrush-pkg
     builds:
@@ -112,6 +93,35 @@ nfpms:
       - rpm
     bindir: /usr/bin
 
+  # crush-extended packages
+  - id: crush-extended-pkg
+    builds:
+      - crush-extended
+    package_name: crush-extended
+    file_name_template: >-
+      crush-extended_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    vendor: "Unofficial Crush Build"
+    homepage: https://github.com/aleksclark/crush-modules
+    maintainer: Aleks Clark <aleks.clark@gmail.com>
+    description: |
+      ⚠️  UNOFFICIAL BUILD ⚠️
+      
+      Crush with community plugins: otlp, agent-status, periodic-prompts.
+      
+      This is NOT an official Charm Labs release. Use at your own risk.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    conflicts:
+      - crush
+
 brews:
   # xcrush Homebrew formula
   - ids:
@@ -135,33 +145,36 @@ brews:
       system "#{bin}/xcrush", "--version"
 
   # crush-extended Homebrew formula
-  # NOTE: Disabled - meta archives don't have goos/goarch metadata for Homebrew filtering
-  # TODO: Re-enable once we can build crush-extended with goreleaser directly
-  # - ids:
-  #     - crush-extended-darwin-amd64
-  #     - crush-extended-darwin-arm64
-  #     - crush-extended-linux-amd64
-  #     - crush-extended-linux-arm64
-  #   name: crush-extended
-  #   repository:
-  #     owner: aleksclark
-  #     name: homebrew-tap
-  #     token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-  #   commit_author:
-  #     name: goreleaserbot
-  #     email: bot@goreleaser.com
-  #   directory: Formula
-  #   homepage: https://github.com/aleksclark/crush-modules
-  #   description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts)"
-  #   license: MIT
-  #   conflicts:
-  #     - crush
-  #   install: |
-  #     bin.install "crush-extended"
+  - ids:
+      - crush-extended-archive
+    name: crush-extended
+    repository:
+      owner: aleksclark
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "chore(brew): update crush-extended to {{ .Tag }}"
+    directory: Formula
+    homepage: https://github.com/aleksclark/crush-modules
+    description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts)"
+    license: MIT
+    conflicts:
+      - crush
+    install: |
+      bin.install "crush-extended"
+    test: |
+      system "#{bin}/crush-extended", "--version"
+    caveats: |
+      WARNING: This is an UNOFFICIAL build of Crush with experimental plugins.
+      This is NOT supported by Charm Labs. Use at your own risk.
 
 aurs:
   # xcrush AUR package
   - name: xcrush-bin
+    ids:
+      - xcrush-archive
     homepage: https://github.com/aleksclark/crush-modules
     description: "Unofficial build tool for creating custom Crush distributions with plugins"
     maintainers:
@@ -183,30 +196,34 @@ aurs:
       install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/xcrush/LICENSE"
     provides:
       - xcrush
-    ids:
-      - xcrush-archive
 
   # crush-extended AUR package
-  # NOTE: Disabled - meta archives don't have platform metadata needed for AUR filtering
-  # TODO: Either build platform-specific archives or use custom PKGBUILD generation
-  # - name: crush-extended-bin
-  #   homepage: https://github.com/aleksclark/crush-modules
-  #   description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts)"
-  #   maintainers:
-  #     - 'Aleks Clark <aleks dot clark at gmail dot com>'
-  #   contributors:
-  #     - 'Aleks Clark <aleks dot clark at gmail dot com>'
-  #   license: MIT
-  #   private_key: '{{ .Env.AUR_SSH_KEY }}'
-  #   git_url: 'ssh://aur@aur.archlinux.org/crush-extended-bin.git'
-  #   commit_author:
-  #     name: Aleks Clark
-  #     email: aleks.clark@gmail.com
-  #   package: |-
-  #     install -Dm755 "./crush-extended" "${pkgdir}/usr/bin/crush-extended"
-  #     install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/crush-extended/LICENSE"
-  #   provides:
-  #     - crush-extended
+  - name: crush-extended-bin
+    ids:
+      - crush-extended-archive
+    homepage: https://github.com/aleksclark/crush-modules
+    description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts)"
+    maintainers:
+      - 'Aleks Clark <aleks dot clark at gmail dot com>'
+    contributors:
+      - 'Aleks Clark <aleks dot clark at gmail dot com>'
+    license: MIT
+    private_key: '{{ .Env.AUR_SSH_KEY }}'
+    git_url: 'ssh://aur@aur.archlinux.org/crush-extended-bin.git'
+    commit_author:
+      name: Aleks Clark
+      email: aleks.clark@gmail.com
+    commit_msg_template: "chore: update to {{ .Tag }}"
+    conflicts:
+      - crush
+    package: |-
+      # bin
+      install -Dm755 "./crush-extended" "${pkgdir}/usr/bin/crush-extended"
+      
+      # license
+      install -Dm644 "./LICENSE" "${pkgdir}/usr/share/licenses/crush-extended/LICENSE"
+    provides:
+      - crush-extended
 
 checksum:
   name_template: 'checksums.txt'
