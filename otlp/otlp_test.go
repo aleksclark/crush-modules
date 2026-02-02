@@ -57,15 +57,21 @@ func TestOTLPHookDefaultConfig(t *testing.T) {
 	require.NotNil(t, hook)
 	require.Equal(t, DefaultEndpoint, hook.cfg.Endpoint)
 	require.Equal(t, DefaultServiceName, hook.cfg.ServiceName)
+	require.Equal(t, DefaultContentLimit, hook.cfg.ContentLimit)
+	require.Equal(t, DefaultToolInputLimit, hook.cfg.ToolInputLimit)
+	require.Equal(t, DefaultToolResultLimit, hook.cfg.ToolResultLimit)
 }
 
 func TestOTLPHookCustomConfig(t *testing.T) {
 	t.Parallel()
 
 	cfg := Config{
-		Endpoint:    "http://custom:4318",
-		ServiceName: "custom-service",
-		Insecure:    true,
+		Endpoint:        "http://custom:4318",
+		ServiceName:     "custom-service",
+		Insecure:        true,
+		ContentLimit:    8000,
+		ToolInputLimit:  10000,
+		ToolResultLimit: 5000,
 		Headers: map[string]string{
 			"Authorization": "Bearer token",
 		},
@@ -78,6 +84,9 @@ func TestOTLPHookCustomConfig(t *testing.T) {
 	require.Equal(t, "http://custom:4318", hook.cfg.Endpoint)
 	require.Equal(t, "custom-service", hook.cfg.ServiceName)
 	require.True(t, hook.cfg.Insecure)
+	require.Equal(t, 8000, hook.cfg.ContentLimit)
+	require.Equal(t, 10000, hook.cfg.ToolInputLimit)
+	require.Equal(t, 5000, hook.cfg.ToolResultLimit)
 	require.Equal(t, "Bearer token", hook.cfg.Headers["Authorization"])
 }
 
@@ -151,6 +160,90 @@ func (m *mockMessageSubscriber) Send(e plugin.MessageEvent) {
 
 func (m *mockMessageSubscriber) Close() {
 	close(m.events)
+}
+
+func TestTruncateString(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		limit    int
+		expected string
+	}{
+		{"short string", "hello", 10, "hello"},
+		{"exact limit", "hello", 5, "hello"},
+		{"over limit", "hello world", 5, "hello..."},
+		{"empty string", "", 10, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := truncateString(tt.input, tt.limit)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestNormalizeGitURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"https URL", "https://github.com/user/repo.git", "github.com/user/repo"},
+		{"ssh URL", "git@github.com:user/repo.git", "github.com/user/repo"},
+		{"http URL", "http://github.com/user/repo", "github.com/user/repo"},
+		{"no git suffix", "https://github.com/user/repo", "github.com/user/repo"},
+		{"already normalized", "github.com/user/repo", "github.com/user/repo"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := normalizeGitURL(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestIsFilePath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"absolute path", "/home/user/file.go", true},
+		{"relative dot path", "./file.go", true},
+		{"parent path", "../file.go", true},
+		{"path with slash", "src/file.go", true},
+		{"plain word", "hello", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isFilePath(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestOTLPHookProjectInfo(t *testing.T) {
+	t.Parallel()
+
+	// Create a hook with a working directory.
+	app := plugin.NewApp(
+		plugin.WithWorkingDir("/home/user/myproject"),
+	)
+
+	hook, err := NewOTLPHook(app, Config{})
+	require.NoError(t, err)
+	require.NotNil(t, hook)
+	require.Equal(t, "/home/user/myproject", hook.projectPath)
+	require.Equal(t, "myproject", hook.projectName)
 }
 
 func TestOTLPHookProcessMessages(t *testing.T) {

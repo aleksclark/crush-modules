@@ -23,6 +23,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -45,6 +49,15 @@ const (
 
 	// DefaultEndpoint is the default OTLP HTTP endpoint.
 	DefaultEndpoint = "http://localhost:4318"
+
+	// DefaultContentLimit is the max length for message content attributes.
+	DefaultContentLimit = 4000
+
+	// DefaultToolInputLimit is the max length for tool input attributes.
+	DefaultToolInputLimit = 4000
+
+	// DefaultToolResultLimit is the max length for tool result attributes.
+	DefaultToolResultLimit = 4000
 )
 
 // Config defines the configuration options for the OTLP plugin.
@@ -60,6 +73,15 @@ type Config struct {
 
 	// Headers to include with OTLP requests.
 	Headers map[string]string `json:"headers,omitempty"`
+
+	// ContentLimit is the max length for message content attributes (default: 4000).
+	ContentLimit int `json:"content_limit,omitempty"`
+
+	// ToolInputLimit is the max length for tool input attributes (default: 4000).
+	ToolInputLimit int `json:"tool_input_limit,omitempty"`
+
+	// ToolResultLimit is the max length for tool result attributes (default: 4000).
+	ToolResultLimit int `json:"tool_result_limit,omitempty"`
 }
 
 func init() {
@@ -70,6 +92,12 @@ func init() {
 		}
 		return NewOTLPHook(app, cfg)
 	}, &Config{})
+}
+
+// gitInfo holds git repository information.
+type gitInfo struct {
+	repo   string
+	branch string
 }
 
 // sessionContext holds both a session span and its context for proper parent-child relationships.
@@ -98,6 +126,11 @@ type OTLPHook struct {
 	// This prevents duplicate spans when MessageUpdated is called multiple times.
 	completedAssistantMessages   map[string]struct{}
 	completedAssistantMessagesMu sync.RWMutex
+
+	// Cached project/git info.
+	projectPath string
+	projectName string
+	gitInfoVal  *gitInfo
 }
 
 // NewOTLPHook creates a new OTLP tracing hook.
@@ -107,6 +140,15 @@ func NewOTLPHook(app *plugin.App, cfg Config) (*OTLPHook, error) {
 	}
 	if cfg.ServiceName == "" {
 		cfg.ServiceName = DefaultServiceName
+	}
+	if cfg.ContentLimit == 0 {
+		cfg.ContentLimit = DefaultContentLimit
+	}
+	if cfg.ToolInputLimit == 0 {
+		cfg.ToolInputLimit = DefaultToolInputLimit
+	}
+	if cfg.ToolResultLimit == 0 {
+		cfg.ToolResultLimit = DefaultToolResultLimit
 	}
 
 	hook := &OTLPHook{
@@ -118,7 +160,66 @@ func NewOTLPHook(app *plugin.App, cfg Config) (*OTLPHook, error) {
 		completedAssistantMessages: make(map[string]struct{}),
 	}
 
+	// Initialize project info.
+	hook.initProjectInfo()
+
 	return hook, nil
+}
+
+// initProjectInfo populates project and git info from working directory.
+func (h *OTLPHook) initProjectInfo() {
+	h.projectPath = h.app.WorkingDir()
+	if h.projectPath != "" {
+		h.projectName = filepath.Base(h.projectPath)
+	}
+	h.gitInfoVal = getGitInfo(h.projectPath)
+}
+
+// getGitInfo returns git repository info or nil if not a git repo.
+func getGitInfo(dir string) *gitInfo {
+	if dir == "" {
+		return nil
+	}
+
+	// Check if .git exists.
+	gitDir := filepath.Join(dir, ".git")
+	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+		return nil
+	}
+
+	info := &gitInfo{}
+
+	// Get remote origin URL.
+	if out, err := exec.Command("git", "-C", dir, "remote", "get-url", "origin").Output(); err == nil {
+		info.repo = normalizeGitURL(strings.TrimSpace(string(out)))
+	}
+
+	// Get current branch.
+	if out, err := exec.Command("git", "-C", dir, "rev-parse", "--abbrev-ref", "HEAD").Output(); err == nil {
+		info.branch = strings.TrimSpace(string(out))
+	}
+
+	if info.repo == "" && info.branch == "" {
+		return nil
+	}
+	return info
+}
+
+// normalizeGitURL converts git SSH/HTTP URLs to a normalized form.
+func normalizeGitURL(url string) string {
+	// Remove .git suffix.
+	url = strings.TrimSuffix(url, ".git")
+
+	// Convert SSH URLs (git@github.com:user/repo) to normalized form (github.com/user/repo).
+	if after, found := strings.CutPrefix(url, "git@"); found {
+		url = strings.Replace(after, ":", "/", 1)
+	}
+
+	// Remove protocol prefixes.
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimPrefix(url, "http://")
+
+	return url
 }
 
 // Name returns the hook identifier.
@@ -148,7 +249,8 @@ func (h *OTLPHook) Start(ctx context.Context) error {
 			return h.Stop()
 		case event, ok := <-events:
 			if !ok {
-				return nil
+				// Events channel closed - ensure spans are properly ended.
+				return h.Stop()
 			}
 			h.handleEvent(ctx, event)
 		}
@@ -161,8 +263,12 @@ func (h *OTLPHook) Stop() error {
 		return nil
 	}
 
-	// Clear session contexts (session spans are already ended on creation).
+	// End all session spans with end reason.
 	h.sessionContextsMu.Lock()
+	for _, sc := range h.sessionContexts {
+		sc.span.SetAttributes(attribute.String("session.end_reason", "user_exit"))
+		sc.span.End()
+	}
 	h.sessionContexts = make(map[string]sessionContext)
 	h.sessionContextsMu.Unlock()
 
@@ -214,6 +320,8 @@ func (h *OTLPHook) initTracer(ctx context.Context) error {
 		resource.WithAttributes(
 			semconv.ServiceNameKey.String(h.cfg.ServiceName),
 			attribute.String("crush.version", "1.0.0"),
+			attribute.String("agent.name", "crush"),
+			attribute.String("agent.type", "coding-assistant"),
 		),
 	)
 	if err != nil {
@@ -240,7 +348,7 @@ func (h *OTLPHook) handleEvent(ctx context.Context, event plugin.MessageEvent) {
 	case plugin.MessageUpdated:
 		h.handleMessageUpdated(ctx, msg)
 	case plugin.MessageDeleted:
-		h.handleMessageDeleted(ctx, msg)
+		h.handleMessageDeleted(msg)
 	}
 }
 
@@ -269,7 +377,8 @@ func (h *OTLPHook) handleMessageUpdated(ctx context.Context, msg plugin.Message)
 	// Handle tool calls.
 	for _, tc := range msg.ToolCalls {
 		if tc.Finished {
-			h.endToolCallSpan(tc.ID)
+			// Tool call is complete - either end existing span or create+end if new.
+			h.finishToolCallSpan(sessionCtx, tc, msg.SessionID)
 		} else {
 			h.createToolCallSpan(sessionCtx, tc, msg.SessionID)
 		}
@@ -279,10 +388,10 @@ func (h *OTLPHook) handleMessageUpdated(ctx context.Context, msg plugin.Message)
 	h.maybeCreateAssistantMessageSpan(sessionCtx, msg)
 }
 
-func (h *OTLPHook) handleMessageDeleted(ctx context.Context, msg plugin.Message) {
+func (h *OTLPHook) handleMessageDeleted(msg plugin.Message) {
 	// Clean up any associated spans.
 	for _, tc := range msg.ToolCalls {
-		h.endToolCallSpan(tc.ID)
+		h.endToolCallSpan(tc)
 	}
 }
 
@@ -305,22 +414,56 @@ func (h *OTLPHook) getOrCreateSessionContext(ctx context.Context, sessionID stri
 		return sc.ctx
 	}
 
+	// Build session attributes with required fields.
+	// Per spec, project.path and project.name are required, so always include them.
+	projectPath := h.projectPath
+	if projectPath == "" {
+		projectPath = "unknown"
+	}
+	projectName := h.projectName
+	if projectName == "" {
+		projectName = "unknown"
+	}
+
+	attrs := []attribute.KeyValue{
+		attribute.String("session.id", sessionID),
+		attribute.String("session.start_reason", "user_initiated"),
+		attribute.String("agent.name", "crush"),
+		attribute.String("project.path", projectPath),
+		attribute.String("project.name", projectName),
+	}
+
+	// Add git info.
+	if h.gitInfoVal != nil {
+		if h.gitInfoVal.repo != "" {
+			attrs = append(attrs, attribute.String("git.repo", h.gitInfoVal.repo))
+		}
+		if h.gitInfoVal.branch != "" {
+			attrs = append(attrs, attribute.String("git.branch", h.gitInfoVal.branch))
+		}
+	}
+
+	// Add LLM model info from session info provider.
+	if sip := h.app.SessionInfo(); sip != nil {
+		if info := sip.SessionInfo(); info != nil {
+			if info.Model != "" {
+				attrs = append(attrs, attribute.String("llm.model", info.Model))
+			}
+			if info.Provider != "" {
+				attrs = append(attrs, attribute.String("llm.provider", info.Provider))
+			}
+		}
+	}
+
 	// Create a new root span for this session.
 	// Use trace.WithNewRoot() to ensure this is a trace root, not a child of any existing span.
 	sessionCtx, span := h.tracer.Start(ctx, "crush.session",
 		trace.WithNewRoot(),
-		trace.WithAttributes(
-			attribute.String("session.id", sessionID),
-		),
+		trace.WithAttributes(attrs...),
 	)
 
-	// End the session span immediately so it gets exported.
-	// The context still carries the trace/span IDs, so child spans will be
-	// properly parented to this session span even though it's already ended.
-	// This is necessary because in interactive mode, sessions can be very
-	// long-lived and we need the parent span to be visible in Jaeger before
-	// the session ends.
-	span.End()
+	// Session span is kept open until the session ends or Stop() is called.
+	// This ensures session duration properly reflects actual session length.
 
 	h.sessionContexts[sessionID] = sessionContext{span: span, ctx: sessionCtx}
 	return sessionCtx
@@ -337,10 +480,7 @@ func (h *OTLPHook) createUserMessageSpan(ctx context.Context, msg plugin.Message
 	)
 
 	// Add content as attribute (truncated if too long).
-	content := msg.Content
-	if len(content) > 1000 {
-		content = content[:1000] + "..."
-	}
+	content := truncateString(msg.Content, h.cfg.ContentLimit)
 	span.SetAttributes(attribute.String("message.content", content))
 
 	// User messages are instant, end immediately.
@@ -372,21 +512,40 @@ func (h *OTLPHook) maybeCreateAssistantMessageSpan(ctx context.Context, msg plug
 	h.completedAssistantMessages[msg.ID] = struct{}{}
 	h.completedAssistantMessagesMu.Unlock()
 
+	// Build attributes.
+	attrs := []attribute.KeyValue{
+		attribute.String("message.id", msg.ID),
+		attribute.String("message.role", string(msg.Role)),
+		attribute.String("session.id", msg.SessionID),
+		attribute.Int("message.content_length", len(msg.Content)),
+	}
+
+	// Add LLM metrics from session info.
+	if sip := h.app.SessionInfo(); sip != nil {
+		if info := sip.SessionInfo(); info != nil {
+			if info.Model != "" {
+				attrs = append(attrs, attribute.String("llm.model", info.Model))
+			}
+			if info.Provider != "" {
+				attrs = append(attrs, attribute.String("llm.provider", info.Provider))
+			}
+			attrs = append(attrs,
+				attribute.Int64("llm.tokens.input", info.Tokens.Input),
+				attribute.Int64("llm.tokens.output", info.Tokens.Output),
+				attribute.Int64("llm.tokens.cache_read", info.Tokens.CacheRead),
+				attribute.Int64("llm.tokens.cache_write", info.Tokens.CacheWrite),
+				attribute.Float64("llm.cost_usd", info.CostUSD),
+			)
+		}
+	}
+
 	// Create and immediately end the span with final content.
 	_, span := h.tracer.Start(ctx, "crush.message.assistant",
-		trace.WithAttributes(
-			attribute.String("message.id", msg.ID),
-			attribute.String("message.role", string(msg.Role)),
-			attribute.String("session.id", msg.SessionID),
-			attribute.Int("message.content_length", len(msg.Content)),
-		),
+		trace.WithAttributes(attrs...),
 	)
 
 	// Add content (truncated if too long).
-	content := msg.Content
-	if len(content) > 1000 {
-		content = content[:1000] + "..."
-	}
+	content := truncateString(msg.Content, h.cfg.ContentLimit)
 	span.SetAttributes(attribute.String("message.content", content))
 
 	// Add tool call count if any.
@@ -406,32 +565,54 @@ func (h *OTLPHook) createToolCallSpan(ctx context.Context, tc plugin.ToolCallInf
 		return
 	}
 
+	attrs := []attribute.KeyValue{
+		attribute.String("tool.id", tc.ID),
+		attribute.String("tool.name", tc.Name),
+		attribute.String("session.id", sessionID),
+		attribute.Bool("tool.is_error", false), // Will be updated when tool finishes
+	}
+
+	// Only add input if available (may be empty for streaming tool calls).
+	if tc.Input != "" {
+		input := truncateString(tc.Input, h.cfg.ToolInputLimit)
+		attrs = append(attrs, attribute.String("tool.input", input))
+	}
+
 	_, span := h.tracer.Start(ctx, "crush.tool."+tc.Name,
-		trace.WithAttributes(
-			attribute.String("tool.id", tc.ID),
-			attribute.String("tool.name", tc.Name),
-			attribute.String("session.id", sessionID),
-		),
+		trace.WithAttributes(attrs...),
 	)
 
-	// Add raw input as attribute (truncated if too long).
-	input := tc.Input
-	if len(input) > 2000 {
-		input = input[:2000] + "..."
-	}
-	span.SetAttributes(attribute.String("tool.input", input))
-
 	// Parse JSON input and add individual parameters as attributes.
-	h.addToolParamsToSpan(span, tc.Input)
+	if tc.Input != "" {
+		h.addToolParamsToSpan(span, tc.Input)
+	}
 
 	h.toolSpans[tc.ID] = span
 }
 
 // addToolParamsToSpan parses JSON tool input and adds individual parameters as span attributes.
+// It also extracts semantic attributes like target files and URLs.
 func (h *OTLPHook) addToolParamsToSpan(span trace.Span, input string) {
 	var params map[string]any
 	if err := json.Unmarshal([]byte(input), &params); err != nil {
 		return // Not valid JSON, skip parameter extraction
+	}
+
+	// Extract semantic attributes based on common tool patterns.
+	if filePath, ok := params["file_path"].(string); ok {
+		span.SetAttributes(attribute.String("tool.target_file", filePath))
+	}
+	if path, ok := params["path"].(string); ok && isFilePath(path) {
+		span.SetAttributes(attribute.String("tool.target_file", path))
+	}
+	if url, ok := params["url"].(string); ok {
+		span.SetAttributes(attribute.String("tool.target_url", url))
+	}
+	if pattern, ok := params["pattern"].(string); ok {
+		span.SetAttributes(attribute.String("tool.search_pattern", pattern))
+	}
+	if command, ok := params["command"].(string); ok {
+		span.SetAttributes(attribute.String("tool.command", truncateString(command, 500)))
 	}
 
 	for key, value := range params {
@@ -439,10 +620,7 @@ func (h *OTLPHook) addToolParamsToSpan(span trace.Span, input string) {
 		switch v := value.(type) {
 		case string:
 			// Truncate long string values.
-			if len(v) > 500 {
-				v = v[:500] + "..."
-			}
-			span.SetAttributes(attribute.String(attrKey, v))
+			span.SetAttributes(attribute.String(attrKey, truncateString(v, 500)))
 		case float64:
 			// JSON numbers are float64.
 			span.SetAttributes(attribute.Float64(attrKey, v))
@@ -453,17 +631,89 @@ func (h *OTLPHook) addToolParamsToSpan(span trace.Span, input string) {
 		default:
 			// For arrays and objects, marshal back to JSON string.
 			if jsonBytes, err := json.Marshal(v); err == nil {
-				jsonStr := string(jsonBytes)
-				if len(jsonStr) > 500 {
-					jsonStr = jsonStr[:500] + "..."
-				}
+				jsonStr := truncateString(string(jsonBytes), 500)
 				span.SetAttributes(attribute.String(attrKey, jsonStr))
 			}
 		}
 	}
 }
 
-func (h *OTLPHook) endToolCallSpan(toolCallID string) {
+// isFilePath checks if a string looks like a file path.
+func isFilePath(s string) bool {
+	return strings.HasPrefix(s, "/") ||
+		strings.HasPrefix(s, "./") ||
+		strings.HasPrefix(s, "../") ||
+		strings.Contains(s, "/")
+}
+
+func (h *OTLPHook) endToolCallSpan(tc plugin.ToolCallInfo) {
+	h.toolSpansMu.Lock()
+	defer h.toolSpansMu.Unlock()
+
+	if span, exists := h.toolSpans[tc.ID]; exists {
+		// When the tool finishes, the input is finally available.
+		// Add it now since it wasn't available when the span was created.
+		if tc.Input != "" {
+			input := truncateString(tc.Input, h.cfg.ToolInputLimit)
+			span.SetAttributes(attribute.String("tool.input", input))
+			h.addToolParamsToSpan(span, tc.Input)
+		}
+		// Note: tool.is_error will be set by handleToolResults if a result arrives.
+		span.End()
+		delete(h.toolSpans, tc.ID)
+	}
+}
+
+// finishToolCallSpan completes a tool call span. If the span exists, it updates it with
+// input and ends it. If the span doesn't exist (tool call arrived already finished),
+// it creates a new span with the input and immediately ends it.
+func (h *OTLPHook) finishToolCallSpan(ctx context.Context, tc plugin.ToolCallInfo, sessionID string) {
+	h.toolSpansMu.Lock()
+	defer h.toolSpansMu.Unlock()
+
+	span, exists := h.toolSpans[tc.ID]
+	if !exists {
+		// Tool call arrived already finished - create span now with the input.
+		attrs := []attribute.KeyValue{
+			attribute.String("tool.id", tc.ID),
+			attribute.String("tool.name", tc.Name),
+			attribute.String("session.id", sessionID),
+			attribute.Bool("tool.is_error", false), // Default to false, will be updated by tool result
+		}
+
+		// Add input if available.
+		if tc.Input != "" {
+			input := truncateString(tc.Input, h.cfg.ToolInputLimit)
+			attrs = append(attrs, attribute.String("tool.input", input))
+		}
+
+		_, span = h.tracer.Start(ctx, "crush.tool."+tc.Name,
+			trace.WithAttributes(attrs...),
+		)
+
+		// Parse JSON input and add individual parameters as attributes.
+		if tc.Input != "" {
+			h.addToolParamsToSpan(span, tc.Input)
+		}
+	} else {
+		// Existing span - add input if available (may not have been set at creation time).
+		if tc.Input != "" {
+			input := truncateString(tc.Input, h.cfg.ToolInputLimit)
+			span.SetAttributes(attribute.String("tool.input", input))
+			h.addToolParamsToSpan(span, tc.Input)
+		}
+	}
+
+	span.End()
+
+	// Clean up if it was in the map.
+	if exists {
+		delete(h.toolSpans, tc.ID)
+	}
+}
+
+// endToolCallSpanByID ends a tool span by ID only (used when we don't have the input).
+func (h *OTLPHook) endToolCallSpanByID(toolCallID string) {
 	h.toolSpansMu.Lock()
 	defer h.toolSpansMu.Unlock()
 
@@ -481,15 +731,13 @@ func (h *OTLPHook) handleToolResults(ctx context.Context, msg plugin.Message) {
 
 		if exists {
 			// Add result to the span.
-			content := tr.Content
-			if len(content) > 2000 {
-				content = content[:2000] + "..."
-			}
+			content := truncateString(tr.Content, h.cfg.ToolResultLimit)
 			span.SetAttributes(
 				attribute.String("tool.result", content),
+				attribute.Int("tool.result_length", len(tr.Content)),
 				attribute.Bool("tool.is_error", tr.IsError),
 			)
-			h.endToolCallSpan(tr.ToolCallID)
+			h.endToolCallSpanByID(tr.ToolCallID)
 		} else {
 			// Create a new span for orphaned tool results.
 			_, resultSpan := h.tracer.Start(ctx, "crush.tool."+tr.Name,
@@ -501,12 +749,20 @@ func (h *OTLPHook) handleToolResults(ctx context.Context, msg plugin.Message) {
 				),
 			)
 
-			content := tr.Content
-			if len(content) > 2000 {
-				content = content[:2000] + "..."
-			}
-			resultSpan.SetAttributes(attribute.String("tool.result", content))
+			content := truncateString(tr.Content, h.cfg.ToolResultLimit)
+			resultSpan.SetAttributes(
+				attribute.String("tool.result", content),
+				attribute.Int("tool.result_length", len(tr.Content)),
+			)
 			resultSpan.End()
 		}
 	}
+}
+
+// truncateString truncates a string to the specified limit, adding "..." if truncated.
+func truncateString(s string, limit int) string {
+	if len(s) <= limit {
+		return s
+	}
+	return s[:limit] + "..."
 }

@@ -305,9 +305,108 @@ The `testutil` package provides helpers for e2e testing:
 - `CrushBinary()` - Path to the built Crush binary
 - `NewTestTerminal(t, args, cols, rows)` - Create terminal with Crush running
 - `NewIsolatedTerminal(t, cols, rows)` - Terminal with isolated config
+- `NewIsolatedTerminalWithConfigAndEnv(t, cols, rows, configJSON, tmpDir)` - Full control
 - `SnapshotText(snap)` - Extract text from terminal snapshot
 - `WaitForText(t, term, text, timeout)` - Wait for text to appear
 - `WaitForCondition(t, term, fn, timeout)` - Wait for condition
+
+### Mock LLM Server
+
+The `testutil/mockllm` package provides a mock OpenAI-compatible server for
+testing agent behavior without making real API calls.
+
+```go
+package myplugin_test
+
+import (
+    "testing"
+
+    "github.com/aleksclark/crush-modules/testutil"
+    "github.com/aleksclark/crush-modules/testutil/mockllm"
+    "github.com/stretchr/testify/require"
+)
+
+func TestPluginWithMockLLM(t *testing.T) {
+    testutil.SkipIfE2EDisabled(t)
+
+    // Create and configure mock server.
+    server := mockllm.NewServer()
+    server.OnMessage("ping", mockllm.ToolCallResponse("ping", map[string]any{}))
+    server.OnToolResult("ping", mockllm.TextResponse("Pong received!"))
+    url := server.Start(t)
+
+    // Create isolated environment pointing to mock server.
+    tmpDir := mockllm.SetupTestEnv(t, url)
+    term := testutil.NewIsolatedTerminalWithConfigAndEnv(t, 80, 24, mockllm.TestConfig(url), tmpDir)
+    defer term.Close()
+
+    // Interact with the agent...
+    testutil.WaitForText(t, term, "Pong", 10*time.Second)
+}
+```
+
+#### Response Builders
+
+| Function | Description |
+|----------|-------------|
+| `TextResponse(content)` | Simple text response |
+| `ToolCallResponse(name, args)` | Single tool call |
+| `MultiToolCallResponse(specs...)` | Multiple tool calls |
+| `TextAndToolResponse(content, name, args)` | Text with tool call |
+| `ErrorResponse(message)` | Error message |
+| `EchoResponse(prefix)` | Echoes user message |
+| `EmptyResponse()` | No content (edge case) |
+
+#### Matchers
+
+| Function | Description |
+|----------|-------------|
+| `MessageContains(text)` | Last user message contains text |
+| `MessageEquals(text)` | Last user message equals text exactly |
+| `HasToolResult(name)` | Has tool result with given name |
+| `HasToolCall(name)` | Any assistant message has tool call |
+| `HasSystemPrompt()` | Has a system message |
+| `SystemPromptContains(text)` | System prompt contains text |
+| `MessageCount(n)` | Exactly n messages |
+| `And(matchers...)` | All matchers must match |
+| `Or(matchers...)` | Any matcher must match |
+| `Not(matcher)` | Negates a matcher |
+
+#### Server Methods
+
+| Method | Description |
+|--------|-------------|
+| `Start(t)` | Start server, returns URL |
+| `OnMessage(text, resp)` | Handle messages containing text |
+| `OnToolResult(name, resp)` | Handle tool results |
+| `OnAny(resp)` | Handle any request |
+| `On(matcher, resp)` | Custom matcher |
+| `Sequence(responses...)` | Return responses in order |
+| `Default(resp)` | Default when no match |
+| `Requests()` | Get all captured requests |
+| `LastRequest()` | Get most recent request |
+| `Reset()` | Clear handlers and history |
+
+#### Conversation Builder
+
+For complex multi-turn conversations:
+
+```go
+mockllm.NewConversation(server).
+    ThenText("Hello! How can I help?").
+    ThenTool("search", map[string]string{"query": "test"}).
+    ThenText("Here are the search results.").
+    Apply()
+```
+
+#### Assertions
+
+```go
+mockllm.AssertRequestCount(t, server, 3)
+mockllm.AssertLastMessageContains(t, server, "hello")
+mockllm.AssertToolWasCalled(t, server, "ping")
+mockllm.AssertToolWasNotCalled(t, server, "dangerous_tool")
+```
 
 ## Working with crush-plugin-poc
 
@@ -481,6 +580,9 @@ OpenTelemetry Collector).
         "endpoint": "http://localhost:4318",
         "service_name": "crush",
         "insecure": true,
+        "content_limit": 4000,
+        "tool_input_limit": 4000,
+        "tool_result_limit": 4000,
         "headers": {
           "Authorization": "Bearer token"
         }
@@ -490,26 +592,68 @@ OpenTelemetry Collector).
 }
 ```
 
+| Option | Default | Description |
+|--------|---------|-------------|
+| `endpoint` | `http://localhost:4318` | OTLP HTTP endpoint |
+| `service_name` | `crush` | Service name in traces |
+| `insecure` | `false` | Allow HTTP (not HTTPS) |
+| `content_limit` | `4000` | Max chars for message content |
+| `tool_input_limit` | `4000` | Max chars for tool input |
+| `tool_result_limit` | `4000` | Max chars for tool results |
+| `headers` | `{}` | Headers for OTLP requests |
+
 ### What's Traced
 
-- **Session spans** - Root spans for each chat session
-- **User messages** - Spans with message content
-- **Assistant messages** - Spans with response content
-- **Tool calls** - Spans with tool name, input, and output
+- **Session spans** - Root spans with project/git context
+- **User messages** - Spans with full message content
+- **Assistant messages** - Spans with response content and LLM metrics
+- **Tool calls** - Spans with tool name, input, result, and semantic attributes
 
-### Span Attributes
+### Session Span Attributes
 
 | Attribute | Description |
 |-----------|-------------|
 | `session.id` | Chat session identifier |
+| `agent.name` | Agent name ("crush") |
+| `project.path` | Working directory path |
+| `project.name` | Project folder name |
+| `git.repo` | Git remote origin (normalized) |
+| `git.branch` | Current git branch |
+| `llm.model` | AI model identifier |
+| `llm.provider` | API provider (anthropic, bedrock, etc.) |
+
+### Message Span Attributes
+
+| Attribute | Description |
+|-----------|-------------|
 | `message.id` | Message identifier |
 | `message.role` | user/assistant/tool |
-| `message.content` | Text content (truncated) |
+| `message.content` | Full text content |
+| `message.content_length` | Original content length |
+| `message.tool_calls` | Number of tool calls (assistant only) |
+| `llm.model` | Model used for response |
+| `llm.provider` | API provider |
+| `llm.tokens.input` | Input tokens consumed |
+| `llm.tokens.output` | Output tokens generated |
+| `llm.tokens.cache_read` | Tokens read from cache |
+| `llm.tokens.cache_write` | Tokens written to cache |
+| `llm.cost_usd` | Estimated cost in USD |
+
+### Tool Span Attributes
+
+| Attribute | Description |
+|-----------|-------------|
 | `tool.id` | Tool call identifier |
 | `tool.name` | Name of the tool |
-| `tool.input` | JSON input (truncated) |
-| `tool.result` | Result content (truncated) |
+| `tool.input` | Full JSON input |
+| `tool.result` | Result content |
+| `tool.result_length` | Original result length |
 | `tool.is_error` | Whether tool returned error |
+| `tool.target_file` | Target file path (if applicable) |
+| `tool.target_url` | Target URL (for fetch ops) |
+| `tool.search_pattern` | Search pattern (for grep/glob) |
+| `tool.command` | Command string (for bash) |
+| `tool.param.*` | Individual tool parameters |
 
 ## Agent Status Plugin
 
@@ -561,6 +705,74 @@ The plugin writes JSON files named `crush-{instance}.json` with:
 - `thinking` - Processing/reasoning
 - `working` - Actively executing tools
 - `error` - Encountered an error
+
+## SubAgents Plugin
+
+The `subagents` plugin enables custom sub-agents loaded from YAML+Markdown files.
+Sub-agents are specialized agents with their own system prompts and tool access.
+
+### Configuration
+
+```json
+{
+  "options": {
+    "plugins": {
+      "subagents": {
+        "dirs": [".crush/agents", "~/.crush/agents"]
+      }
+    }
+  }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `dirs` | `[".crush/agents", "~/.crush/agents"]` | Directories to search for agent files |
+
+### Agent File Format
+
+Agent files are Markdown with YAML frontmatter:
+
+```yaml
+---
+name: code-reviewer
+description: Expert code reviewer for quality checks
+tools: Read, Grep, Glob
+model: inherit
+permissionMode: default
+---
+
+You are a senior code reviewer with expertise in Go and TypeScript.
+Review code changes carefully for:
+- Logic errors
+- Security issues
+- Performance problems
+```
+
+### Frontmatter Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Unique identifier (lowercase, hyphens) |
+| `description` | Yes | When to delegate to this agent |
+| `tools` | No | Allowed tools (comma-separated). Inherits all if omitted |
+| `disallowedTools` | No | Tools to deny |
+| `model` | No | `sonnet`, `opus`, `haiku`, `inherit` (default: `inherit`) |
+| `permissionMode` | No | `default`, `acceptEdits`, `dontAsk`, `bypassPermissions`, `plan` |
+
+### Dialogs
+
+The plugin provides two dialogs accessible via ctrl+p:
+
+1. **SubAgents List** - Shows all discovered sub-agents with enabled status
+2. **SubAgent Details** - View prompt, toggle, reload individual agents
+
+### Current Limitations
+
+Sub-agent execution requires plugin API extension (not yet implemented).
+Currently, the tool returns a placeholder message. Full execution requires:
+- `plugin.App.SubAgentRunner()` interface for running sub-agents
+- Tool permission bypass for agent's allowed tools
 
 ## Code Style
 

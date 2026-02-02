@@ -39,6 +39,7 @@ tasks:
           --with ./otlp \
           --with ./agent-status \
           --with ./periodic-prompts \
+          --with ./subagents \
           --output {{.OUTPUT_DIR}}/crush
 
   distro:all:
@@ -52,6 +53,7 @@ tasks:
           --with ./otlp \
           --with ./agent-status \
           --with ./periodic-prompts \
+          --with ./subagents \
           --output {{.OUTPUT_DIR}}/crush
 
   distro:ping:
@@ -94,6 +96,16 @@ tasks:
           --with ./periodic-prompts \
           --output {{.OUTPUT_DIR}}/crush-periodic-prompts
 
+  distro:subagents:
+    desc: Build a Crush distro with only the subagents plugin
+    deps: [build:xcrush]
+    cmds:
+      - |
+        {{.OUTPUT_DIR}}/xcrush build \
+          --crush {{.CRUSH_POC}} \
+          --with ./subagents \
+          --output {{.OUTPUT_DIR}}/crush-subagents
+
   test:
     desc: Run unit tests for all plugins (skips e2e tests)
     cmds:
@@ -101,6 +113,7 @@ tasks:
       - cd otlp && go test -short ./...
       - cd agent-status && go test -short ./...
       - cd periodic-prompts && go test -short ./...
+      - cd subagents && go test -short ./...
 
   test:e2e:
     desc: Run end-to-end tests (requires distro to be built first)
