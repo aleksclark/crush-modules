@@ -1,0 +1,10 @@
+go 1.25.5
+
+use (
+	.
+	./agent-status
+	./otlp
+	./periodic-prompts
+	./ping
+	./subagents
+)
