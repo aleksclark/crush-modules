@@ -6,3 +6,5 @@ dist
 *.zip
 build
 crush-extended
+go.work
+go.work.sum
