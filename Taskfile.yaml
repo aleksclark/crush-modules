@@ -40,6 +40,7 @@ tasks:
           --with ./agent-status \
           --with ./periodic-prompts \
           --with ./subagents \
+          --with ./tempotown \
           --output {{.OUTPUT_DIR}}/crush
 
   distro:all:
@@ -54,6 +55,7 @@ tasks:
           --with ./agent-status \
           --with ./periodic-prompts \
           --with ./subagents \
+          --with ./tempotown \
           --output {{.OUTPUT_DIR}}/crush
 
   distro:ping:
@@ -114,13 +116,14 @@ tasks:
       - cd agent-status && go test -short ./...
       - cd periodic-prompts && go test -short ./...
       - cd subagents && go test -short ./...
+      - cd tempotown && go test -short ./...
 
   test:e2e:
-    desc: Run end-to-end tests (requires distro to be built first)
-    deps: [distro]
-    dir: '{{.ROOT_DIR}}/ping'
+    desc: Run end-to-end tests (requires distro:all to be built first)
+    deps: [distro:all]
     cmds:
-      - go test -v -run 'Plugin'
+      - cd ping && go test -v -run 'Plugin'
+      - cd tempotown && go test -v -run 'Tempotown'
 
   clean:
     desc: Remove build artifacts

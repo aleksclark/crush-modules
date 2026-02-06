@@ -1,6 +1,6 @@
 // crush-extended is an unofficial Crush build with community plugins.
 //
-// This build includes: otlp, agent-status, periodic-prompts, subagents
+// This build includes: otlp, agent-status, periodic-prompts, subagents, tempotown
 //
 // WARNING: This is NOT an official Charm Labs release.
 package main
@@ -13,6 +13,7 @@ import (
 	_ "github.com/aleksclark/crush-modules/otlp"
 	_ "github.com/aleksclark/crush-modules/periodic-prompts"
 	_ "github.com/aleksclark/crush-modules/subagents"
+	_ "github.com/aleksclark/crush-modules/tempotown"
 )
 
 func main() {

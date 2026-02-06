@@ -14,7 +14,17 @@ func TestConfig(serverURL string) string {
     "mock": {
       "type": "openai-compat",
       "base_url": "` + serverURL + `",
-      "api_key": "mock-key"
+      "api_key": "mock-key",
+      "models": [
+        {
+          "id": "mock-model",
+          "name": "Mock Model",
+          "context_window": 128000,
+          "default_max_tokens": 4096,
+          "can_reason": false,
+          "supports_attachments": false
+        }
+      ]
     }
   },
   "models": {
@@ -69,6 +79,16 @@ func SetupTestEnvWithConfig(t *testing.T, serverURL string, additionalConfig map
 				"type":     "openai-compat",
 				"base_url": serverURL,
 				"api_key":  "mock-key",
+				"models": []map[string]any{
+					{
+						"id":                 "mock-model",
+						"name":               "Mock Model",
+						"context_window":     128000,
+						"default_max_tokens": 4096,
+						"can_reason":         false,
+						"supports_attachments": false,
+					},
+				},
 			},
 		},
 		"models": map[string]any{

@@ -143,6 +143,26 @@ func NewIsolatedTerminalWithConfig(t *testing.T, cols, rows int, configJSON stri
 	return term
 }
 
+// filterCloudCredentials removes cloud provider credentials from environment variables.
+// This ensures tests use the mock LLM server instead of real providers.
+func filterCloudCredentials(env []string) []string {
+	var filtered []string
+	for _, e := range env {
+		key := strings.Split(e, "=")[0]
+		// Filter out AWS, GCP, Azure, and other provider credentials.
+		if strings.HasPrefix(key, "AWS_") ||
+			strings.HasPrefix(key, "GOOGLE_") ||
+			strings.HasPrefix(key, "AZURE_") ||
+			strings.HasPrefix(key, "OPENAI_") ||
+			strings.HasPrefix(key, "ANTHROPIC_") ||
+			strings.HasPrefix(key, "GEMINI_") {
+			continue
+		}
+		filtered = append(filtered, e)
+	}
+	return filtered
+}
+
 // NewIsolatedTerminalWithConfigAndEnv creates a terminal with isolated config environment
 // using the provided config JSON string and a pre-created tmpDir for full control over
 // the environment (e.g., for creating agent files before starting).
@@ -154,8 +174,10 @@ func NewIsolatedTerminalWithConfigAndEnv(t *testing.T, cols, rows int, configJSO
 		t.Fatalf("Failed to create terminal: %v", err)
 	}
 
+	// Filter out cloud credentials to ensure tests use mock LLM server.
+	filteredEnv := filterCloudCredentials(os.Environ())
 	cmd := exec.CommandContext(context.Background(), CrushBinary())
-	cmd.Env = append(os.Environ(),
+	cmd.Env = append(filteredEnv,
 		"XDG_CONFIG_HOME="+filepath.Join(tmpDir, "config"),
 		"XDG_DATA_HOME="+filepath.Join(tmpDir, "data"),
 		"HOME="+tmpDir,

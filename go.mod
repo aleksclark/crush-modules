@@ -7,6 +7,7 @@ require (
 	github.com/aleksclark/crush-modules/otlp v0.0.0
 	github.com/aleksclark/crush-modules/periodic-prompts v0.0.0
 	github.com/aleksclark/crush-modules/subagents v0.0.0-20260202232737-d5b8a00d7bec
+	github.com/aleksclark/crush-modules/tempotown v0.0.0-00010101000000-000000000000
 	github.com/charmbracelet/crush v0.0.0
 	github.com/charmbracelet/x/vttest v0.0.0-20260122224438-b01af16209d9
 	github.com/stretchr/testify v1.11.1
@@ -216,3 +217,7 @@ replace github.com/aleksclark/crush-modules/agent-status => ./agent-status
 replace github.com/aleksclark/crush-modules/otlp => ./otlp
 
 replace github.com/aleksclark/crush-modules/periodic-prompts => ./periodic-prompts
+
+replace github.com/aleksclark/crush-modules/subagents => ./subagents
+
+replace github.com/aleksclark/crush-modules/tempotown => ./tempotown

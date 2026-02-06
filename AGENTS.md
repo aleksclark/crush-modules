@@ -774,6 +774,83 @@ Currently, the tool returns a placeholder message. Full execution requires:
 - `plugin.App.SubAgentRunner()` interface for running sub-agents
 - Tool permission bypass for agent's allowed tools
 
+## Tempotown Plugin
+
+The `tempotown` plugin integrates Crush with the Tempotown orchestrator, allowing
+Crush to act as an agent within a Temporal-based ensemble of AI coding agents.
+
+### What It Does
+
+1. **Reports Status** - Sends Crush's current activity to Tempotown via MCP
+2. **Receives Signals** - Polls for feedback/signals from Temporal workflows
+3. **Auto-Reconnects** - Maintains persistent connection to Tempotown server
+
+### Configuration
+
+```json
+{
+  "options": {
+    "plugins": {
+      "tempotown": {
+        "endpoint": "localhost:9090",
+        "role": "coder",
+        "capabilities": ["code", "test"],
+        "poll_interval_seconds": 5
+      }
+    }
+  }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `endpoint` | `localhost:9090` | Tempotown MCP server address |
+| `role` | `coder` | Agent role: coder, reviewer, merger, supervisor |
+| `capabilities` | `[]` | List of agent capabilities |
+| `poll_interval_seconds` | `5` | How often to poll for signals |
+
+### How It Works
+
+1. **Connection** - On startup, connects to Tempotown MCP server at configured endpoint
+2. **Registration** - Calls `register_agent` with configured role and capabilities
+3. **Status Reporting** - Observes Crush message events and reports status via `report_status`
+4. **Signal Polling** - Periodically polls `get_pending_feedback` for incoming signals
+
+### Status Events Reported
+
+| Crush Event | Status Reported |
+|-------------|-----------------|
+| User message received | "processing user input" |
+| Assistant generating | "generating response" |
+| Tool executing | "running tool: {name}" |
+| Response complete | "response complete" |
+
+### Tempotown MCP Tools Used
+
+| Tool | Purpose |
+|------|---------|
+| `register_agent` | Register Crush instance with orchestrator |
+| `report_status` | Send status updates during work |
+| `get_pending_feedback` | Receive signals from workflows |
+
+### Requirements
+
+- Tempotown orchestrator running at configured endpoint
+- MCP server enabled (default port 9090)
+
+### Feedback Channel
+
+The plugin exposes a feedback channel for injecting signals into Crush. This can
+be used by other components to receive workflow signals:
+
+```go
+hook := h.(*tempotown.TempotownHook)
+for feedback := range hook.FeedbackCh() {
+    // Handle feedback from Tempotown
+    log.Println("Received:", feedback.Message)
+}
+```
+
 ## Code Style
 
 Follow the same conventions as crush-plugin-poc (see its AGENTS.md):
