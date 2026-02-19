@@ -122,8 +122,8 @@ tasks:
     desc: Run end-to-end tests (requires distro:all to be built first)
     deps: [distro:all]
     cmds:
-      - cd ping && go test -v -run 'Plugin'
-      - cd tempotown && go test -v -run 'Tempotown'
+      - cd ping && go test -v -tags e2e -run 'Plugin'
+      - cd tempotown && go test -v -tags e2e -run 'Tempotown'
 
   clean:
     desc: Remove build artifacts

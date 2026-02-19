@@ -31,22 +31,21 @@ jobs:
             otlp/go.sum
             agent-status/go.sum
             periodic-prompts/go.sum
+            subagents/go.sum
+            tempotown/go.sum
 
       - name: Update go.mod replacements for CI
         run: |
-          # Update replace directives to point to checked out crush-plugin-poc
-          for mod in ping otlp agent-status periodic-prompts; do
+          for mod in ping otlp agent-status periodic-prompts subagents tempotown; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../
             cd ..
           done
 
-      - name: Run unit tests (skip e2e)
-        env:
-          E2E_SKIP: "1"
+      - name: Run unit tests
         run: |
-          cd ping && go test -v ./...
-          cd ../otlp && go test -v ./...
-          cd ../agent-status && go test -v ./...
-          cd ../periodic-prompts && go test -v ./...
+          for mod in ping otlp agent-status periodic-prompts subagents tempotown; do
+            echo "=== Testing $mod ==="
+            cd $mod && go test -v ./... && cd ..
+          done

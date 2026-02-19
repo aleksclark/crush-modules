@@ -168,10 +168,18 @@ func TestNewTempotownHook(t *testing.T) {
 func TestDefaultConfig(t *testing.T) {
 	t.Parallel()
 
+	// Empty config (no endpoint) returns nil hook - plugin is disabled.
 	cfg := Config{}
 	hook, err := NewTempotownHook(nil, cfg)
 	require.NoError(t, err)
-	require.Equal(t, DefaultEndpoint, hook.cfg.Endpoint)
+	require.Nil(t, hook)
+
+	// With endpoint, defaults are applied for role and poll interval.
+	cfg = Config{Endpoint: "localhost:9090"}
+	hook, err = NewTempotownHook(nil, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, hook)
+	require.Equal(t, "localhost:9090", hook.cfg.Endpoint)
 	require.Equal(t, DefaultRole, hook.cfg.Role)
 	require.Equal(t, int(DefaultPollInterval/time.Second), hook.cfg.PollIntervalSeconds)
 }
@@ -254,9 +262,10 @@ func TestCallTool(t *testing.T) {
 func TestFeedbackChannel(t *testing.T) {
 	t.Parallel()
 
-	cfg := Config{}
+	cfg := Config{Endpoint: "localhost:9090"}
 	hook, err := NewTempotownHook(nil, cfg)
 	require.NoError(t, err)
+	require.NotNil(t, hook)
 
 	ch := hook.FeedbackCh()
 	require.NotNil(t, ch)

@@ -29,10 +29,12 @@ jobs:
             otlp/go.sum
             agent-status/go.sum
             periodic-prompts/go.sum
+            subagents/go.sum
+            tempotown/go.sum
 
       - name: Update go.mod replacements for CI
         run: |
-          for mod in ping otlp agent-status periodic-prompts; do
+          for mod in ping otlp agent-status periodic-prompts subagents tempotown; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../
@@ -52,9 +54,11 @@ jobs:
             --with ./otlp \
             --with ./agent-status \
             --with ./periodic-prompts \
+            --with ./subagents \
+            --with ./tempotown \
             --output ./dist/crush
 
       - name: Run E2E tests
         run: |
-          cd ping && go test -v -run 'Plugin' ./...
-          cd ../agent-status && go test -v -run 'Plugin|E2E' ./...
+          cd ping && go test -v -tags e2e -run 'Plugin' ./...
+          cd ../agent-status && go test -v -tags e2e -run 'Plugin|E2E' ./...

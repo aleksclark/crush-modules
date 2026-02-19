@@ -1,3 +1,5 @@
+//go:build e2e
+
 package tempotown_test
 
 import (
