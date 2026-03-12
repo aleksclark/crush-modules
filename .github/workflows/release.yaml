@@ -45,6 +45,8 @@ jobs:
               mod="${BASH_REMATCH[1]}"
               target="${BASH_REMATCH[2]}"
               [[ "$mod" == "github.com/charmbracelet/crush" ]] && continue
+              # Convert "path version" to "path@version" for go mod edit
+              target="${target/ /@}"
               go mod edit -replace "${mod}=${target}"
             fi
           done < crush-plugin-poc/go.mod
