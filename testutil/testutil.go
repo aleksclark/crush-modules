@@ -122,12 +122,24 @@ func NewIsolatedTerminalWithConfig(t *testing.T, cols, rows int, configJSON stri
 		t.Fatalf("Failed to write data config: %v", err)
 	}
 
+	// Create working directory with .crush/init to skip project initialization.
+	workDir := filepath.Join(tmpDir, "work")
+	crushDataDir := filepath.Join(workDir, ".crush")
+	if err := os.MkdirAll(crushDataDir, 0o755); err != nil {
+		t.Fatalf("Failed to create .crush dir: %v", err)
+	}
+	initFile := filepath.Join(crushDataDir, "init")
+	if err := os.WriteFile(initFile, nil, 0o644); err != nil {
+		t.Fatalf("Failed to write init flag: %v", err)
+	}
+
 	term, err := vttest.NewTerminal(t, cols, rows)
 	if err != nil {
 		t.Fatalf("Failed to create terminal: %v", err)
 	}
 
 	cmd := exec.CommandContext(context.Background(), CrushBinary())
+	cmd.Dir = workDir
 	cmd.Env = append(os.Environ(),
 		"XDG_CONFIG_HOME="+filepath.Join(tmpDir, "config"),
 		"XDG_DATA_HOME="+filepath.Join(tmpDir, "data"),
@@ -169,6 +181,17 @@ func filterCloudCredentials(env []string) []string {
 func NewIsolatedTerminalWithConfigAndEnv(t *testing.T, cols, rows int, configJSON string, tmpDir string) *vttest.Terminal {
 	t.Helper()
 
+	// Create working directory with .crush/init to skip project initialization.
+	workDir := filepath.Join(tmpDir, "work")
+	crushDataDir := filepath.Join(workDir, ".crush")
+	if err := os.MkdirAll(crushDataDir, 0o755); err != nil {
+		t.Fatalf("Failed to create .crush dir: %v", err)
+	}
+	initFile := filepath.Join(crushDataDir, "init")
+	if err := os.WriteFile(initFile, nil, 0o644); err != nil {
+		t.Fatalf("Failed to write init flag: %v", err)
+	}
+
 	term, err := vttest.NewTerminal(t, cols, rows)
 	if err != nil {
 		t.Fatalf("Failed to create terminal: %v", err)
@@ -177,6 +200,7 @@ func NewIsolatedTerminalWithConfigAndEnv(t *testing.T, cols, rows int, configJSO
 	// Filter out cloud credentials to ensure tests use mock LLM server.
 	filteredEnv := filterCloudCredentials(os.Environ())
 	cmd := exec.CommandContext(context.Background(), CrushBinary())
+	cmd.Dir = workDir
 	cmd.Env = append(filteredEnv,
 		"XDG_CONFIG_HOME="+filepath.Join(tmpDir, "config"),
 		"XDG_DATA_HOME="+filepath.Join(tmpDir, "data"),

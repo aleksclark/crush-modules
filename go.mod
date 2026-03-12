@@ -3,13 +3,13 @@ module github.com/aleksclark/crush-modules
 go 1.26.1
 
 require (
-	github.com/aleksclark/crush-modules/agent-status v0.0.0
-	github.com/aleksclark/crush-modules/otlp v0.0.0
-	github.com/aleksclark/crush-modules/periodic-prompts v0.0.0
-	github.com/aleksclark/crush-modules/subagents v0.0.0-20260202232737-d5b8a00d7bec
+	github.com/aleksclark/crush-modules/agent-status v0.0.0-00010101000000-000000000000
+	github.com/aleksclark/crush-modules/otlp v0.0.0-00010101000000-000000000000
+	github.com/aleksclark/crush-modules/periodic-prompts v0.0.0-00010101000000-000000000000
+	github.com/aleksclark/crush-modules/subagents v0.0.0-00010101000000-000000000000
 	github.com/aleksclark/crush-modules/tempotown v0.0.0-00010101000000-000000000000
 	github.com/charmbracelet/crush v0.0.0
-	github.com/charmbracelet/x/vttest v0.0.0-20260216111343-536eb63c1f4c
+	github.com/charmbracelet/x/vttest v0.0.0-20260311145557-c83711a11ffa
 	github.com/stretchr/testify v1.11.1
 )
 
@@ -62,7 +62,7 @@ require (
 	github.com/charmbracelet/anthropic-sdk-go v0.0.0-20260223140439-63879b0b8dab // indirect
 	github.com/charmbracelet/colorprofile v0.4.2 // indirect
 	github.com/charmbracelet/fang v0.4.4 // indirect
-	github.com/charmbracelet/ultraviolet v0.0.0-20260205113103-524a6607adb8 // indirect
+	github.com/charmbracelet/ultraviolet v0.0.0-20260303162955-0b88c25f3fff // indirect
 	github.com/charmbracelet/x/ansi v0.11.6 // indirect
 	github.com/charmbracelet/x/conpty v0.2.0 // indirect
 	github.com/charmbracelet/x/editor v0.2.0 // indirect
@@ -75,7 +75,7 @@ require (
 	github.com/charmbracelet/x/powernap v0.1.3 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/charmbracelet/x/termios v0.1.1 // indirect
-	github.com/charmbracelet/x/vt v0.0.0-20260216111343-536eb63c1f4c // indirect
+	github.com/charmbracelet/x/vt v0.0.0-20260311145557-c83711a11ffa // indirect
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
 	github.com/charmbracelet/x/xpty v0.1.3 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
