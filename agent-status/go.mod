@@ -1,6 +1,6 @@
 module github.com/aleksclark/crush-modules/agent-status
 
-go 1.26.0
+go 1.26.1
 
 require (
 	github.com/aleksclark/crush-modules v0.0.0
