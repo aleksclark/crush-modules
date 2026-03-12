@@ -1,6 +1,6 @@
 module github.com/aleksclark/crush-modules/subagents
 
-go 1.26.0
+go 1.26.1
 
 require (
 	charm.land/fantasy v0.11.1
