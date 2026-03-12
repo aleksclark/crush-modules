@@ -6,21 +6,21 @@ require (
 	charm.land/fantasy v0.11.1
 	github.com/aleksclark/crush-modules v0.0.0-00010101000000-000000000000
 	github.com/charmbracelet/crush v0.0.0
-	github.com/charmbracelet/x/vttest v0.0.0-20260216111343-536eb63c1f4c
+	github.com/charmbracelet/x/vttest v0.0.0-20260311145557-c83711a11ffa
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	github.com/charmbracelet/colorprofile v0.4.2 // indirect
-	github.com/charmbracelet/ultraviolet v0.0.0-20260205113103-524a6607adb8 // indirect
+	github.com/charmbracelet/ultraviolet v0.0.0-20260303162955-0b88c25f3fff // indirect
 	github.com/charmbracelet/x/ansi v0.11.6 // indirect
 	github.com/charmbracelet/x/conpty v0.2.0 // indirect
 	github.com/charmbracelet/x/exp/ordered v0.1.0 // indirect
 	github.com/charmbracelet/x/exp/slice v0.0.0-20260209194814-eeb2896ac759 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/charmbracelet/x/termios v0.1.1 // indirect
-	github.com/charmbracelet/x/vt v0.0.0-20260216111343-536eb63c1f4c // indirect
+	github.com/charmbracelet/x/vt v0.0.0-20260311145557-c83711a11ffa // indirect
 	github.com/charmbracelet/x/windows v0.2.2 // indirect
 	github.com/charmbracelet/x/xpty v0.1.3 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
