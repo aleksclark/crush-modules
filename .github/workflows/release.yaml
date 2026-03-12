@@ -39,6 +39,16 @@ jobs:
           go mod edit -replace github.com/aleksclark/crush-modules/subagents=./subagents
           go mod edit -replace github.com/aleksclark/crush-modules/tempotown=./tempotown
           
+          # Propagate replace directives from crush-plugin-poc's go.mod
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^replace\ (.+)\ =\>\ (.+)$ ]]; then
+              mod="${BASH_REMATCH[1]}"
+              target="${BASH_REMATCH[2]}"
+              [[ "$mod" == "github.com/charmbracelet/crush" ]] && continue
+              go mod edit -replace "${mod}=${target}"
+            fi
+          done < crush-plugin-poc/go.mod
+          
           # Update plugin module replacements
           for mod in otlp agent-status periodic-prompts subagents tempotown; do
             cd $mod
