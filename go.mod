@@ -208,6 +208,8 @@ require (
 
 replace github.com/charmbracelet/crush => ../crush-plugin-poc
 
+replace github.com/aleksclark/crush-modules/acp => ./acp
+
 replace github.com/aleksclark/crush-modules/agent-status => ./agent-status
 
 replace github.com/aleksclark/crush-modules/otlp => ./otlp
