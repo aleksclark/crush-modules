@@ -33,10 +33,11 @@ jobs:
             periodic-prompts/go.sum
             subagents/go.sum
             tempotown/go.sum
+            tavily/go.sum
 
       - name: Update go.mod replacements for CI
         run: |
-          for mod in ping otlp agent-status periodic-prompts subagents tempotown; do
+          for mod in ping otlp agent-status periodic-prompts subagents tempotown tavily; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../
@@ -45,7 +46,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          for mod in ping otlp agent-status periodic-prompts subagents tempotown; do
+          for mod in ping otlp agent-status periodic-prompts subagents tempotown tavily; do
             echo "=== Testing $mod ==="
             cd $mod && go test -v ./... && cd ..
           done

@@ -16,6 +16,10 @@ crush-modules/
 │   ├── go.mod             # Module-specific dependencies
 │   ├── otlp.go            # Hook implementation
 │   └── otlp_test.go       # Unit tests
+├── tavily/                # Tavily search provider plugin
+│   ├── go.mod             # Module-specific dependencies
+│   ├── tavily.go          # Search provider implementation
+│   └── tavily_test.go     # Unit tests
 ├── testutil/              # Shared test utilities
 │   └── testutil.go        # Terminal testing helpers
 ├── Taskfile.yaml          # Build and test commands
@@ -564,6 +568,103 @@ type ToolResultInfo struct {
     IsError    bool
 }
 ```
+
+### Adding a Search Provider
+
+The plugin system supports custom search providers that replace the built-in
+DuckDuckGo scraper used by `agentic_fetch`. Only one search provider can be
+active at a time.
+
+```go
+package mysearch
+
+import (
+    "context"
+    "github.com/charmbracelet/crush/plugin"
+)
+
+const PluginName = "mysearch"
+
+type Config struct {
+    APIKey string `json:"api_key"`
+}
+
+func init() {
+    plugin.RegisterSearchProviderWithConfig(PluginName, func(ctx context.Context, app *plugin.App) (plugin.SearchProvider, error) {
+        var cfg Config
+        if err := app.LoadConfig(PluginName, &cfg); err != nil {
+            return nil, err
+        }
+        if cfg.APIKey == "" {
+            return nil, nil // No API key = use default DuckDuckGo
+        }
+        return NewProvider(cfg)
+    }, &Config{})
+}
+
+type Provider struct {
+    cfg Config
+}
+
+func NewProvider(cfg Config) (*Provider, error) {
+    return &Provider{cfg: cfg}, nil
+}
+
+func (p *Provider) Search(ctx context.Context, query string, maxResults int) ([]plugin.SearchResult, error) {
+    // Call your search API and return results
+    return []plugin.SearchResult{
+        {Title: "Result", Link: "https://example.com", Snippet: "...", Position: 1},
+    }, nil
+}
+```
+
+When a search provider is registered and configured, the `web_search` tool used
+by `agentic_fetch` will use it instead of DuckDuckGo. If the provider factory
+returns nil (e.g., no API key), DuckDuckGo is used as fallback.
+
+## Tavily Search Provider Plugin
+
+The `tavily` plugin replaces the built-in DuckDuckGo scraper with the
+[Tavily Search API](https://tavily.com), a paid search service designed for
+AI agents. This eliminates rate-limiting issues common with DuckDuckGo scraping.
+
+### Configuration
+
+```json
+{
+  "options": {
+    "plugins": {
+      "tavily": {
+        "api_key": "tvly-YOUR_API_KEY",
+        "search_depth": "basic",
+        "topic": "general"
+      }
+    }
+  }
+}
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `api_key` | (required) | Tavily API key. Starts with `tvly-`. |
+| `endpoint` | `https://api.tavily.com/search` | Override API URL (for proxies/testing). |
+| `search_depth` | `basic` | Result quality: `basic` or `advanced`. |
+| `topic` | `general` | Search category: `general`, `news`, or `finance`. |
+| `include_domains` | `[]` | Only return results from these domains. |
+| `exclude_domains` | `[]` | Exclude results from these domains. |
+
+### How It Works
+
+When configured with an API key, the Tavily plugin registers as a search
+provider. The `agentic_fetch` tool's `web_search` sub-tool will use Tavily
+instead of DuckDuckGo for all searches. No other configuration changes needed.
+
+Without an API key, the plugin is inactive and DuckDuckGo is used as usual.
+
+### Getting an API Key
+
+Sign up at [tavily.com](https://tavily.com) to get an API key. The free tier
+includes 1,000 searches/month.
 
 ## OTLP Tracing Plugin
 
