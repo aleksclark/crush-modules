@@ -33,6 +33,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/PuerkitoBio/goquery v1.11.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
+	github.com/aleksclark/crush-modules/tavily v0.0.0-00010101000000-000000000000
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.41.3 // indirect
@@ -219,3 +220,7 @@ replace github.com/aleksclark/crush-modules/periodic-prompts => ./periodic-promp
 replace github.com/aleksclark/crush-modules/subagents => ./subagents
 
 replace github.com/aleksclark/crush-modules/tempotown => ./tempotown
+
+replace github.com/aleksclark/crush-modules/tavily => ./tavily
+
+replace charm.land/fantasy => github.com/aleksclark/fantasy v0.12.2-0.20260313173731-b8ea67938150

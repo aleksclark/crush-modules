@@ -111,7 +111,7 @@ nfpms:
     description: |
       ⚠️  UNOFFICIAL BUILD ⚠️
       
-      Crush with community plugins: otlp, agent-status, periodic-prompts, subagents, tempotown.
+      Crush with community plugins: otlp, agent-status, periodic-prompts, subagents, tempotown, tavily.
       
       This is NOT an official Charm Labs release. Use at your own risk.
     license: MIT
@@ -158,7 +158,7 @@ brews:
     commit_msg_template: "chore(brew): update crush-extended to {{ .Tag }}"
     directory: Formula
     homepage: https://github.com/aleksclark/crush-modules
-    description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts, subagents, tempotown)"
+    description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts, subagents, tempotown, tavily)"
     license: MIT
     conflicts:
       - crush
@@ -202,7 +202,7 @@ aurs:
     ids:
       - crush-extended-archive
     homepage: https://github.com/aleksclark/crush-modules
-    description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts, subagents, tempotown)"
+    description: "Unofficial Crush build with community plugins (otlp, agent-status, periodic-prompts, subagents, tempotown, tavily)"
     maintainers:
       - 'Aleks Clark <aleks dot clark at gmail dot com>'
     contributors:
@@ -256,7 +256,7 @@ release:
     
     ### What's included:
     
-    - **crush-extended**: Crush with otlp, agent-status, periodic-prompts, subagents, and tempotown plugins
+    - **crush-extended**: Crush with otlp, agent-status, periodic-prompts, subagents, tempotown, and tavily plugins
     - **xcrush**: Build tool for creating custom Crush distributions
     
     For the official Crush release, visit: https://github.com/charmbracelet/crush
