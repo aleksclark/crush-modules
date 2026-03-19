@@ -18,23 +18,14 @@ import (
 )
 
 const (
-	// HookName is the name of the ACP server hook.
-	HookName = "acp-server"
-
-	// DefaultPort is the default HTTP server port.
-	DefaultPort = 8199
-
-	// DefaultAgentName is the ACP agent name for this Crush instance.
+	HookName         = "acp-server"
+	DefaultPort      = 8199
 	DefaultAgentName = "crush"
-
-	// RunTTL is how long completed runs are kept in memory.
-	RunTTL = 1 * time.Hour
-
-	// CleanupInterval is how often to clean up expired runs.
-	CleanupInterval = 5 * time.Minute
+	RunTTL           = 1 * time.Hour
+	CleanupInterval  = 5 * time.Minute
 )
 
-// ServerConfig defines configuration for the ACP server hook.
+// ACPServerConfig defines configuration for the ACP server hook.
 type ACPServerConfig struct {
 	Port        int    `json:"port,omitempty"`
 	AgentName   string `json:"agent_name,omitempty"`
@@ -52,8 +43,6 @@ func init() {
 	}, &ACPServerConfig{})
 }
 
-// applyEnv overrides config fields with environment variables when set.
-// Env vars take precedence over JSON config values.
 func (c *ACPServerConfig) applyEnv() {
 	if v := os.Getenv("CRUSH_ACP_PORT"); v != "" {
 		if p, err := strconv.Atoi(v); err == nil && p > 0 {
@@ -78,7 +67,6 @@ type ServerHook struct {
 	manifest AgentManifest
 	server   *http.Server
 
-	// activeRuns tracks run IDs to message event goroutines.
 	activeRuns sync.Map
 }
 
@@ -107,6 +95,7 @@ func NewServerHook(app *plugin.App, cfg ACPServerConfig) (*ServerHook, error) {
 			Capabilities: []AgentCapability{
 				{Name: "code", Description: "Write, review, and debug code"},
 				{Name: "tools", Description: "Execute tools like file editing, search, and shell commands"},
+				{Name: "sessions", Description: "Persistent sessions with export/import for crash recovery"},
 			},
 			Tags: []string{"coding", "AI assistant"},
 		},
@@ -121,7 +110,6 @@ func NewServerHook(app *plugin.App, cfg ACPServerConfig) (*ServerHook, error) {
 	}, nil
 }
 
-// Name returns the hook name.
 func (h *ServerHook) Name() string {
 	return HookName
 }
@@ -135,6 +123,8 @@ func (h *ServerHook) Start(ctx context.Context) error {
 	mux.HandleFunc("GET /runs/{run_id}", h.handleGetRun)
 	mux.HandleFunc("GET /runs/{run_id}/events", h.handleListRunEvents)
 	mux.HandleFunc("POST /runs/{run_id}/cancel", h.handleCancelRun)
+	mux.HandleFunc("GET /sessions/{session_id}/export", h.handleExportSession)
+	mux.HandleFunc("POST /sessions/import", h.handleImportSession)
 	mux.HandleFunc("GET /ping", h.handlePing)
 
 	addr := fmt.Sprintf(":%d", h.cfg.Port)
@@ -146,11 +136,10 @@ func (h *ServerHook) Start(ctx context.Context) error {
 	h.server = &http.Server{
 		Handler:      mux,
 		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 0, // SSE needs no write timeout.
+		WriteTimeout: 0,
 		IdleTimeout:  120 * time.Second,
 	}
 
-	// Periodic cleanup of expired runs.
 	go func() {
 		ticker := time.NewTicker(CleanupInterval)
 		defer ticker.Stop()
@@ -179,7 +168,6 @@ func (h *ServerHook) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop shuts down the ACP server.
 func (h *ServerHook) Stop() error {
 	if h.server != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -189,13 +177,11 @@ func (h *ServerHook) Stop() error {
 	return nil
 }
 
-// handlePing responds to health checks.
 func (h *ServerHook) handlePing(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "pong")
 }
 
-// handleListAgents returns the single Crush agent manifest.
 func (h *ServerHook) handleListAgents(w http.ResponseWriter, r *http.Request) {
 	resp := AgentsListResponse{
 		Agents: []AgentManifest{h.manifest},
@@ -203,7 +189,6 @@ func (h *ServerHook) handleListAgents(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// handleGetAgent returns the Crush agent manifest if name matches.
 func (h *ServerHook) handleGetAgent(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name != h.manifest.Name {
@@ -269,20 +254,20 @@ func (h *ServerHook) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 
 	switch mode {
 	case RunModeStream:
-		h.handleStreamRun(w, r, rd, prompt, submitter)
+		h.handleStreamRun(w, r, rd, prompt, sessionID, submitter)
 	case RunModeAsync:
-		go h.executeRun(r.Context(), rd, prompt, submitter)
+		go h.executeRun(r.Context(), rd, prompt, sessionID, submitter)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 		json.NewEncoder(w).Encode(rd.getRun())
 	default:
-		h.executeRun(r.Context(), rd, prompt, submitter)
+		h.executeRun(r.Context(), rd, prompt, sessionID, submitter)
 		writeJSON(w, http.StatusOK, rd.getRun())
 	}
 }
 
-// handleStreamRun streams SSE events for a run.
-func (h *ServerHook) handleStreamRun(w http.ResponseWriter, r *http.Request, rd *runData, prompt string, submitter plugin.PromptSubmitter) {
+// handleStreamRun streams SSE events for a run, including session message updates.
+func (h *ServerHook) handleStreamRun(w http.ResponseWriter, r *http.Request, rd *runData, prompt, sessionID string, submitter plugin.PromptSubmitter) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		writeError(w, http.StatusInternalServerError, "streaming not supported")
@@ -295,7 +280,6 @@ func (h *ServerHook) handleStreamRun(w http.ResponseWriter, r *http.Request, rd 
 	w.Header().Set("X-Run-ID", rd.getRun().RunID)
 	w.WriteHeader(http.StatusOK)
 
-	// Send the initial run.created event that was already emitted.
 	for _, e := range rd.getEvents() {
 		writeSSE(w, e)
 	}
@@ -303,7 +287,7 @@ func (h *ServerHook) handleStreamRun(w http.ResponseWriter, r *http.Request, rd 
 
 	sub := rd.subscribe()
 
-	go h.executeRun(r.Context(), rd, prompt, submitter)
+	go h.executeRun(r.Context(), rd, prompt, sessionID, submitter)
 
 	for {
 		select {
@@ -320,11 +304,11 @@ func (h *ServerHook) handleStreamRun(w http.ResponseWriter, r *http.Request, rd 
 }
 
 // executeRun runs a prompt through Crush and tracks the run lifecycle.
-func (h *ServerHook) executeRun(ctx context.Context, rd *runData, prompt string, submitter plugin.PromptSubmitter) {
+// It streams both ACP-level events and raw session message updates for crash recovery.
+func (h *ServerHook) executeRun(ctx context.Context, rd *runData, prompt, sessionID string, submitter plugin.PromptSubmitter) {
 	rd.setStatus(RunStatusInProgress)
 	rd.emit(Event{Type: EventRunInProgress, Run: runPtr(rd.getRun())})
 
-	// Subscribe to message events to capture the response.
 	messages := h.app.Messages()
 	var eventCh <-chan plugin.MessageEvent
 	var cancelWatch context.CancelFunc
@@ -335,7 +319,6 @@ func (h *ServerHook) executeRun(ctx context.Context, rd *runData, prompt string,
 		eventCh = messages.SubscribeMessages(watchCtx)
 	}
 
-	// Track assistant output from message events.
 	var outputMu sync.Mutex
 	var outputParts []string
 	var lastContent string
@@ -346,6 +329,10 @@ func (h *ServerHook) executeRun(ctx context.Context, rd *runData, prompt string,
 		go func() {
 			defer wg.Done()
 			for event := range eventCh {
+				// Emit raw session message updates for crash recovery.
+				// The client can use these to reconstruct the full session state.
+				h.emitSessionMessage(rd, event)
+
 				if event.Message.Role != plugin.MessageRoleAssistant {
 					continue
 				}
@@ -373,7 +360,12 @@ func (h *ServerHook) executeRun(ctx context.Context, rd *runData, prompt string,
 		}()
 	}
 
-	err := submitter.SubmitPrompt(ctx, prompt)
+	var err error
+	if sessionID != "" {
+		err = submitter.SubmitPromptToSession(ctx, sessionID, prompt)
+	} else {
+		err = submitter.SubmitPrompt(ctx, prompt)
+	}
 
 	if cancelWatch != nil {
 		cancelWatch()
@@ -401,12 +393,129 @@ func (h *ServerHook) executeRun(ctx context.Context, rd *runData, prompt string,
 		rd.emit(Event{Type: EventMessageCompleted, Message: &msg})
 	}
 
+	// Emit a final session snapshot event so the client has the complete state.
+	h.emitSessionSnapshot(rd)
+
 	rd.setOutput(output)
 	rd.setStatus(RunStatusCompleted)
 	rd.emit(Event{Type: EventRunCompleted, Run: runPtr(rd.getRun())})
 }
 
-// handleGetRun returns the current state of a run.
+// emitSessionMessage emits a session.message event with the raw message data.
+func (h *ServerHook) emitSessionMessage(rd *runData, event plugin.MessageEvent) {
+	msg := event.Message
+	sm := SessionMessageEvent{
+		EventType: string(event.Type),
+		MessageID: msg.ID,
+		SessionID: msg.SessionID,
+		Role:      string(msg.Role),
+		Content:   msg.Content,
+	}
+
+	for _, tc := range msg.ToolCalls {
+		sm.ToolCalls = append(sm.ToolCalls, SessionToolCall{
+			ID:       tc.ID,
+			Name:     tc.Name,
+			Input:    tc.Input,
+			Finished: tc.Finished,
+		})
+	}
+
+	for _, tr := range msg.ToolResults {
+		sm.ToolResults = append(sm.ToolResults, SessionToolResult{
+			ToolCallID: tr.ToolCallID,
+			Name:       tr.Name,
+			Content:    tr.Content,
+			IsError:    tr.IsError,
+		})
+	}
+
+	rd.emit(Event{
+		Type:    EventSessionMessage,
+		Generic: sm,
+	})
+}
+
+// emitSessionSnapshot emits a session export event so the client can persist the full state.
+func (h *ServerHook) emitSessionSnapshot(rd *runData) {
+	store := h.app.SessionStore()
+	if store == nil {
+		return
+	}
+
+	run := rd.getRun()
+	if run.SessionID == "" {
+		return
+	}
+
+	snapshot, err := store.ExportSession(context.Background(), run.SessionID)
+	if err != nil {
+		h.logger.Warn("failed to export session for snapshot event", "session_id", run.SessionID, "error", err)
+		return
+	}
+
+	rd.emit(Event{
+		Type:    EventSessionSnapshot,
+		Generic: snapshot,
+	})
+}
+
+// handleExportSession exports a full session snapshot.
+func (h *ServerHook) handleExportSession(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.PathValue("session_id")
+
+	store := h.app.SessionStore()
+	if store == nil {
+		writeError(w, http.StatusServiceUnavailable, "session store not available")
+		return
+	}
+
+	snapshot, err := store.ExportSession(r.Context(), sessionID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, fmt.Sprintf("session %q not found: %v", sessionID, err))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, snapshot)
+}
+
+// handleImportSession imports a session snapshot.
+func (h *ServerHook) handleImportSession(w http.ResponseWriter, r *http.Request) {
+	store := h.app.SessionStore()
+	if store == nil {
+		writeError(w, http.StatusServiceUnavailable, "session store not available")
+		return
+	}
+
+	var snapshot plugin.SessionSnapshot
+	if err := json.NewDecoder(r.Body).Decode(&snapshot); err != nil {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid snapshot: %v", err))
+		return
+	}
+
+	if snapshot.Version == 0 {
+		writeError(w, http.StatusBadRequest, "snapshot version is required")
+		return
+	}
+
+	if snapshot.Session.ID == "" {
+		writeError(w, http.StatusBadRequest, "session ID is required")
+		return
+	}
+
+	if err := store.ImportSession(r.Context(), snapshot); err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("import failed: %v", err))
+		return
+	}
+
+	h.logger.Info("session imported", "session_id", snapshot.Session.ID, "messages", len(snapshot.Messages))
+	writeJSON(w, http.StatusOK, map[string]any{
+		"session_id":    snapshot.Session.ID,
+		"message_count": len(snapshot.Messages),
+		"status":        "imported",
+	})
+}
+
 func (h *ServerHook) handleGetRun(w http.ResponseWriter, r *http.Request) {
 	runID := r.PathValue("run_id")
 	rd := h.store.get(runID)
@@ -417,7 +526,6 @@ func (h *ServerHook) handleGetRun(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, rd.getRun())
 }
 
-// handleListRunEvents returns all events for a run.
 func (h *ServerHook) handleListRunEvents(w http.ResponseWriter, r *http.Request) {
 	runID := r.PathValue("run_id")
 	rd := h.store.get(runID)
@@ -430,7 +538,6 @@ func (h *ServerHook) handleListRunEvents(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// handleCancelRun cancels an in-progress run.
 func (h *ServerHook) handleCancelRun(w http.ResponseWriter, r *http.Request) {
 	runID := r.PathValue("run_id")
 	rd := h.store.get(runID)

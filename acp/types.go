@@ -182,6 +182,8 @@ const (
 	EventMessageCreated   EventType = "message.created"
 	EventMessagePart      EventType = "message.part"
 	EventMessageCompleted EventType = "message.completed"
+	EventSessionMessage   EventType = "session.message"
+	EventSessionSnapshot  EventType = "session.snapshot"
 	EventError            EventType = "error"
 	EventGeneric          EventType = "generic"
 )
@@ -230,4 +232,33 @@ func NewAgentMessage(text string) Message {
 			{ContentType: "text/plain", Content: text},
 		},
 	}
+}
+
+// SessionMessageEvent is streamed during runs to provide real-time session
+// state updates. Clients can collect these to reconstruct the full session
+// after a crash without needing to call the export endpoint.
+type SessionMessageEvent struct {
+	EventType   string              `json:"event_type"`
+	MessageID   string              `json:"message_id"`
+	SessionID   string              `json:"session_id"`
+	Role        string              `json:"role"`
+	Content     string              `json:"content,omitempty"`
+	ToolCalls   []SessionToolCall   `json:"tool_calls,omitempty"`
+	ToolResults []SessionToolResult `json:"tool_results,omitempty"`
+}
+
+// SessionToolCall represents a tool invocation in a session message event.
+type SessionToolCall struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Input    string `json:"input,omitempty"`
+	Finished bool   `json:"finished"`
+}
+
+// SessionToolResult represents a tool result in a session message event.
+type SessionToolResult struct {
+	ToolCallID string `json:"tool_call_id"`
+	Name       string `json:"name"`
+	Content    string `json:"content,omitempty"`
+	IsError    bool   `json:"is_error,omitempty"`
 }
