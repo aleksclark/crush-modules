@@ -287,7 +287,7 @@ func TestServerExecuteRun(t *testing.T) {
 	submitter := h.app.PromptSubmitter()
 
 	ctx := context.Background()
-	h.executeRun(ctx, rd, "hello world", submitter)
+	h.executeRun(ctx, rd, "hello world", "", submitter)
 
 	got := rd.getRun()
 	require.Equal(t, RunStatusCompleted, got.Status)
@@ -323,7 +323,7 @@ func TestServerExecuteRunWithMessages(t *testing.T) {
 	rd := h.store.create(run)
 
 	ctx := context.Background()
-	h.executeRun(ctx, rd, "test", h.app.PromptSubmitter())
+	h.executeRun(ctx, rd, "test", "", h.app.PromptSubmitter())
 
 	got := rd.getRun()
 	require.Equal(t, RunStatusCompleted, got.Status)
@@ -376,6 +376,13 @@ type mockPromptSubmitter struct {
 }
 
 func (m *mockPromptSubmitter) SubmitPrompt(_ context.Context, _ string) error {
+	if m.waitFor != nil {
+		<-m.waitFor
+	}
+	return m.err
+}
+
+func (m *mockPromptSubmitter) SubmitPromptToSession(_ context.Context, _, _ string) error {
 	if m.waitFor != nil {
 		<-m.waitFor
 	}
