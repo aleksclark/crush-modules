@@ -66,6 +66,8 @@ type ServerHook struct {
 	store    *runStore
 	manifest AgentManifest
 	server   *http.Server
+	addr     string
+	ready    chan struct{}
 
 	activeRuns sync.Map
 }
@@ -107,11 +109,23 @@ func NewServerHook(app *plugin.App, cfg ACPServerConfig) (*ServerHook, error) {
 		logger:   logger,
 		store:    newRunStore(),
 		manifest: manifest,
+		ready:    make(chan struct{}),
 	}, nil
 }
 
 func (h *ServerHook) Name() string {
 	return HookName
+}
+
+// Addr returns the address the server is listening on.
+// Only valid after Ready() returns.
+func (h *ServerHook) Addr() string {
+	return h.addr
+}
+
+// Ready returns a channel that is closed when the server is listening.
+func (h *ServerHook) Ready() <-chan struct{} {
+	return h.ready
 }
 
 // Start begins the ACP server.
@@ -133,7 +147,9 @@ func (h *ServerHook) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to listen on %s: %w", addr, err)
 	}
 
+	h.addr = listener.Addr().String()
 	h.server = &http.Server{
+		Addr:         h.addr,
 		Handler:      mux,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 0,
@@ -153,7 +169,8 @@ func (h *ServerHook) Start(ctx context.Context) error {
 		}
 	}()
 
-	h.logger.Info("ACP server started", "addr", listener.Addr().String(), "agent", h.cfg.AgentName)
+	close(h.ready)
+	h.logger.Info("ACP server started", "addr", h.addr, "agent", h.cfg.AgentName)
 
 	go func() {
 		<-ctx.Done()

@@ -3,6 +3,7 @@ package acp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -329,6 +330,45 @@ func TestServerExecuteRunWithMessages(t *testing.T) {
 	require.Equal(t, RunStatusCompleted, got.Status)
 	require.Len(t, got.Output, 1)
 	require.Equal(t, "Hello World", got.Output[0].Parts[0].Content)
+}
+
+func TestServerStartListensAndServesRequests(t *testing.T) {
+	t.Parallel()
+
+	app := plugin.NewApp(plugin.WithLogger(nil))
+	hook, err := NewServerHook(app, ACPServerConfig{Port: 0})
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- hook.Start(ctx) }()
+
+	select {
+	case <-hook.Ready():
+	case <-time.After(3 * time.Second):
+		t.Fatal("server did not become ready")
+	}
+
+	addr := hook.Addr()
+	require.NotEmpty(t, addr)
+
+	resp, err := http.Get(fmt.Sprintf("http://%s/ping", addr))
+	require.NoError(t, err)
+	resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	resp, err = http.Get(fmt.Sprintf("http://%s/agents", addr))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	var agents AgentsListResponse
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&agents))
+	require.Len(t, agents.Agents, 1)
+	require.Equal(t, "crush", agents.Agents[0].Name)
+
+	cancel()
+	require.NoError(t, <-errCh)
 }
 
 func TestNewServerHookDefaults(t *testing.T) {
