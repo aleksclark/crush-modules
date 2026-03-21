@@ -47,6 +47,10 @@ periodic_prompts(action: "list") -> Lists configured prompts and schedules
 type Config struct {
 	// Prompts is the list of scheduled prompts.
 	Prompts []PromptConfig `json:"prompts,omitempty"`
+	// Enabled controls whether periodic prompting starts automatically.
+	// When true, the scheduler starts enabled without requiring a manual call to
+	// the periodic_prompts tool. Defaults to false.
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // PromptConfig defines a single scheduled prompt.
@@ -57,6 +61,10 @@ type PromptConfig struct {
 	Schedule string `json:"schedule"`
 	// Name is an optional friendly name for the prompt.
 	Name string `json:"name,omitempty"`
+	// SessionID pins this prompt to a specific session so each firing appends
+	// to the same conversation history rather than opening a new session.
+	// When empty a fresh session is created for each firing.
+	SessionID string `json:"session_id,omitempty"`
 }
 
 // ToolParams defines the parameters the LLM can pass to the toggle tool.
@@ -106,7 +114,7 @@ func NewHook(app *plugin.App, cfg Config) (*Hook, error) {
 	h := &Hook{
 		app:     app,
 		cfg:     cfg,
-		enabled: false, // Disabled by default
+		enabled: cfg.Enabled,
 	}
 
 	// Store the singleton for tool access.
@@ -159,7 +167,9 @@ func (h *Hook) Start(ctx context.Context) error {
 				return
 			}
 
-			h.executePrompt(idx, prompt)
+			// Run in a goroutine so the cron scheduler is never blocked by a
+			// long-running agent response.
+			go h.executePrompt(idx, prompt)
 		})
 		if err != nil {
 			h.logger().Error("periodic-prompts: invalid schedule",
@@ -219,8 +229,23 @@ func (h *Hook) executePrompt(idx int, p PromptConfig) {
 		"file", p.File,
 	)
 
-	// Submit the prompt (will be queued if agent is busy).
-	if err := h.promptSubmitter.SubmitPrompt(context.Background(), content); err != nil {
+	ctx := context.Background()
+
+	if p.SessionID != "" {
+		// Submit to the pinned session so the agent retains conversation history.
+		// SubmitPromptToSession skips silently if the session is busy.
+		if err := h.promptSubmitter.SubmitPromptToSession(ctx, p.SessionID, content); err != nil {
+			h.logger().Error("periodic-prompts: failed to submit prompt to session",
+				"file", p.File,
+				"session_id", p.SessionID,
+				"error", err,
+			)
+		}
+		return
+	}
+
+	// No session ID: submit to a fresh session.
+	if err := h.promptSubmitter.SubmitPrompt(ctx, content); err != nil {
 		h.logger().Error("periodic-prompts: failed to submit prompt",
 			"file", p.File,
 			"error", err,
