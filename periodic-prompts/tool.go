@@ -88,6 +88,9 @@ func listAction(hook *Hook) fantasy.ToolResponse {
 		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, name))
 		sb.WriteString(fmt.Sprintf("   File: %s\n", p.File))
 		sb.WriteString(fmt.Sprintf("   Schedule: %s\n", p.Schedule))
+		if p.SessionID != "" {
+			sb.WriteString(fmt.Sprintf("   Session: %s\n", p.SessionID))
+		}
 		sb.WriteString("\n")
 	}
 
