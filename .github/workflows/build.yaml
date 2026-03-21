@@ -57,7 +57,7 @@ jobs:
       - name: Update go.mod replacements for CI
         shell: bash
         run: |
-          for mod in otlp agent-status periodic-prompts subagents tempotown tavily; do
+          for mod in acp otlp agent-status periodic-prompts subagents tempotown tavily; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../

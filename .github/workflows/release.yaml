@@ -34,6 +34,7 @@ jobs:
           # Update root module replacements
           go mod edit -replace github.com/charmbracelet/crush=./crush-plugin-poc
           go mod edit -replace github.com/aleksclark/crush-modules/agent-status=./agent-status
+          go mod edit -replace github.com/aleksclark/crush-modules/acp=./acp
           go mod edit -replace github.com/aleksclark/crush-modules/otlp=./otlp
           go mod edit -replace github.com/aleksclark/crush-modules/periodic-prompts=./periodic-prompts
           go mod edit -replace github.com/aleksclark/crush-modules/subagents=./subagents
@@ -53,7 +54,7 @@ jobs:
           done < crush-plugin-poc/go.mod
           
           # Update plugin module replacements
-          for mod in otlp agent-status periodic-prompts subagents tempotown tavily; do
+          for mod in acp otlp agent-status periodic-prompts subagents tempotown tavily; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../
