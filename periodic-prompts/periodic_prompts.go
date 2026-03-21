@@ -125,7 +125,7 @@ func (h *Hook) Name() string {
 // logger returns the app logger or a default logger.
 func (h *Hook) logger() *slog.Logger {
 	if h.app != nil {
-		return h.logger()
+		return h.app.Logger()
 	}
 	return slog.Default()
 }
