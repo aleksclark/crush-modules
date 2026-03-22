@@ -68,6 +68,7 @@ type ServerHook struct {
 	server   *http.Server
 	addr     string
 	ready    chan struct{}
+	ctx      context.Context
 
 	activeRuns sync.Map
 }
@@ -169,6 +170,7 @@ func (h *ServerHook) Start(ctx context.Context) error {
 		}
 	}()
 
+	h.ctx = ctx
 	close(h.ready)
 	h.logger.Info("ACP server started", "addr", h.addr, "agent", h.cfg.AgentName)
 
@@ -273,7 +275,7 @@ func (h *ServerHook) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 	case RunModeStream:
 		h.handleStreamRun(w, r, rd, prompt, sessionID, submitter)
 	case RunModeAsync:
-		go h.executeRun(r.Context(), rd, prompt, sessionID, submitter)
+		go h.executeRun(h.ctx, rd, prompt, sessionID, submitter)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 		json.NewEncoder(w).Encode(rd.getRun())
