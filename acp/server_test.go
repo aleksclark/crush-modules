@@ -276,6 +276,99 @@ func TestServerHandleListRunEvents(t *testing.T) {
 	require.Len(t, result.Events, 2)
 }
 
+func TestServerHandleListRunEventsSSE(t *testing.T) {
+	t.Parallel()
+
+	h := newTestServerHook(t)
+
+	run := Run{RunID: "sse-run", AgentName: "crush", Status: RunStatusCreated, Output: []Message{}, CreatedAt: time.Now()}
+	rd := h.store.create(run)
+	rd.emit(Event{Type: EventRunCreated})
+	rd.emit(Event{Type: EventRunInProgress})
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /runs/{run_id}/events", h.handleListRunEvents)
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/runs/sse-run/events", ts.URL), nil)
+	require.NoError(t, err)
+	req.Header.Set("Accept", "text/event-stream")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
+
+	events := ParseSSEStream(resp.Body)
+
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		rd.setStatus(RunStatusCompleted)
+		rd.emit(Event{Type: EventRunCompleted, Run: runPtr(rd.getRun())})
+	}()
+
+	var received []Event
+	for e := range events {
+		received = append(received, e)
+	}
+
+	require.GreaterOrEqual(t, len(received), 3, "expected at least run.created, run.in-progress, and run.completed events")
+
+	types := make([]EventType, len(received))
+	for i, e := range received {
+		types[i] = e.Type
+	}
+	require.Contains(t, types, EventRunCreated)
+	require.Contains(t, types, EventRunInProgress)
+	require.Contains(t, types, EventRunCompleted)
+}
+
+func TestServerHandleListRunEventsSSEAlreadyCompleted(t *testing.T) {
+	t.Parallel()
+
+	h := newTestServerHook(t)
+
+	run := Run{RunID: "done-sse-run", AgentName: "crush", Status: RunStatusCreated, Output: []Message{}, CreatedAt: time.Now()}
+	rd := h.store.create(run)
+	rd.emit(Event{Type: EventRunCreated})
+	rd.emit(Event{Type: EventRunInProgress})
+	rd.setStatus(RunStatusCompleted)
+	rd.emit(Event{Type: EventRunCompleted, Run: runPtr(rd.getRun())})
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /runs/{run_id}/events", h.handleListRunEvents)
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/runs/done-sse-run/events", ts.URL), nil)
+	require.NoError(t, err)
+	req.Header.Set("Accept", "text/event-stream")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
+
+	events := ParseSSEStream(resp.Body)
+
+	var received []Event
+	for e := range events {
+		received = append(received, e)
+	}
+
+	require.Len(t, received, 3, "expected run.created, run.in-progress, and run.completed events")
+	require.Equal(t, EventRunCreated, received[0].Type)
+	require.Equal(t, EventRunInProgress, received[1].Type)
+	require.Equal(t, EventRunCompleted, received[2].Type)
+}
+
 func TestServerExecuteRun(t *testing.T) {
 	t.Parallel()
 

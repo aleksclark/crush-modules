@@ -550,9 +550,58 @@ func (h *ServerHook) handleListRunEvents(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusNotFound, fmt.Sprintf("run %q not found", runID))
 		return
 	}
+
+	if strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+		h.handleStreamRunEvents(w, r, rd)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"events": rd.getEvents(),
 	})
+}
+
+// handleStreamRunEvents streams SSE events for an existing run. It replays
+// all historical events, then streams new ones until the run reaches a
+// terminal state. This allows clients to reconnect to in-progress runs.
+func (h *ServerHook) handleStreamRunEvents(w http.ResponseWriter, r *http.Request, rd *runData) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeError(w, http.StatusInternalServerError, "streaming not supported")
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Run-ID", rd.getRun().RunID)
+	w.WriteHeader(http.StatusOK)
+
+	// Subscribe before replaying history to avoid missing events emitted
+	// between getEvents() and subscribe().
+	sub := rd.subscribe()
+
+	// Replay all historical events.
+	for _, e := range rd.getEvents() {
+		writeSSE(w, e)
+	}
+	flusher.Flush()
+
+	// If the run is already in a terminal state, there will be no more
+	// events. The subscriber channel will close once the done channel
+	// is already closed, so just drain it.
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case event, ok := <-sub:
+			if !ok {
+				return
+			}
+			writeSSE(w, event)
+			flusher.Flush()
+		}
+	}
 }
 
 func (h *ServerHook) handleCancelRun(w http.ResponseWriter, r *http.Request) {
