@@ -273,7 +273,7 @@ func (h *ServerHook) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 	case RunModeStream:
 		h.handleStreamRun(w, r, rd, prompt, sessionID, submitter)
 	case RunModeAsync:
-		go h.executeRun(r.Context(), rd, prompt, sessionID, submitter)
+		go h.executeRun(context.WithoutCancel(r.Context()), rd, prompt, sessionID, submitter)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 		json.NewEncoder(w).Encode(rd.getRun())
@@ -304,7 +304,10 @@ func (h *ServerHook) handleStreamRun(w http.ResponseWriter, r *http.Request, rd 
 
 	sub := rd.subscribe()
 
-	go h.executeRun(r.Context(), rd, prompt, sessionID, submitter)
+	// Detach from the HTTP request context so the run survives SSE
+	// disconnects. The run should only be canceled by server shutdown
+	// or explicit cancel requests.
+	go h.executeRun(context.WithoutCancel(r.Context()), rd, prompt, sessionID, submitter)
 
 	for {
 		select {
