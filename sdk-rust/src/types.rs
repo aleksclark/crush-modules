@@ -1,6 +1,14 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::fmt;
+
+fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::deserialize(deserializer)?.unwrap_or_default())
+}
 
 /// Status of an ACP run.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -94,6 +102,7 @@ pub struct AgentCapability {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     pub role: String,
+    #[serde(default, deserialize_with = "null_as_default")]
     pub parts: Vec<MessagePart>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub created_at: Option<String>,
@@ -126,7 +135,7 @@ pub struct Run {
     #[serde(default)]
     pub session_id: String,
     pub status: RunStatus,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     pub output: Vec<Message>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub await_request: Option<AwaitRequest>,
@@ -198,6 +207,8 @@ pub enum EventType {
     Error,
     #[serde(rename = "generic")]
     Generic,
+    #[serde(other)]
+    Unknown,
 }
 
 impl fmt::Display for EventType {
@@ -482,6 +493,48 @@ mod tests {
         let deserialized: Run = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.run_id, "r1");
         assert_eq!(deserialized.status, RunStatus::Completed);
+    }
+
+    #[test]
+    fn test_run_null_output() {
+        let json = r#"{"agent_name":"crush","run_id":"r1","session_id":"","status":"created","output":null,"created_at":"2025-01-01T00:00:00Z"}"#;
+        let run: Run = serde_json::from_str(json).unwrap();
+        assert_eq!(run.run_id, "r1");
+        assert!(run.output.is_empty());
+    }
+
+    #[test]
+    fn test_event_unknown_type() {
+        let json = r#"{"type":"some.future.event","run":null}"#;
+        let event: Result<Event, _> = serde_json::from_str(json);
+        assert!(event.is_ok(), "unknown event types should not cause parse errors");
+    }
+
+    #[test]
+    fn test_event_run_with_null_output() {
+        let json = r#"{"type":"run.created","run":{"agent_name":"crush","run_id":"abc","session_id":"","status":"created","output":null,"created_at":"2025-01-01T00:00:00.123456789Z"}}"#;
+        let event: Event = serde_json::from_str(json).unwrap();
+        assert_eq!(event.event_type, EventType::RunCreated);
+        let run = event.run.unwrap();
+        assert!(run.output.is_empty());
+    }
+
+    #[test]
+    fn test_event_session_message() {
+        let json = r#"{"type":"session.message","generic":{"event_type":"created","message_id":"m1","session_id":"s1","role":"user","content":"hello"}}"#;
+        let event: Event = serde_json::from_str(json).unwrap();
+        assert_eq!(event.event_type, EventType::SessionMessage);
+        assert!(event.generic.is_some());
+    }
+
+    #[test]
+    fn test_message_completed_with_timestamp() {
+        let json = r#"{"type":"message.completed","message":{"role":"agent","parts":[{"content_type":"text/plain","content":"hello"}],"completed_at":"2025-01-01T00:00:01.5Z"}}"#;
+        let event: Event = serde_json::from_str(json).unwrap();
+        assert_eq!(event.event_type, EventType::MessageCompleted);
+        let msg = event.message.unwrap();
+        assert_eq!(msg.role, "agent");
+        assert!(msg.completed_at.is_some());
     }
 
     #[test]
