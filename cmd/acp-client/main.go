@@ -246,7 +246,7 @@ type AgentsListResponse struct {
 	Agents []AgentManifest `json:"agents"`
 }
 
-// Event is an SSE event from the ACP server.
+// Event is a streaming event from the ACP server.
 type Event struct {
 	Type    string       `json:"type"`
 	Run     *Run         `json:"run,omitempty"`
@@ -302,7 +302,7 @@ func (c *Client) CreateRunStream(ctx context.Context, body RunCreateRequest) (<-
 		return nil, nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Accept", "application/x-ndjson")
 	c.applyHeaders(req)
 
 	resp, err := c.HTTPClient.Do(req)
@@ -323,7 +323,7 @@ func (c *Client) CreateRunStream(ctx context.Context, body RunCreateRequest) (<-
 		defer close(events)
 		defer close(errCh)
 
-		sseEvents := parseSSEStream(resp.Body)
+		sseEvents := parseStream(resp.Body)
 		for ev := range sseEvents {
 			select {
 			case events <- ev:
@@ -352,48 +352,32 @@ func readError(resp *http.Response) error {
 	return fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
 }
 
-// --- SSE Parser ---
+// --- Stream Parser ---
 
-// parseSSEStream reads an SSE response body and emits typed events.
+// parseStream reads an NDJSON response body and emits typed events.
 // The returned channel is closed when the stream ends.
-func parseSSEStream(r io.Reader) <-chan Event {
+func parseStream(r io.Reader) <-chan Event {
 	ch := make(chan Event, 16)
 	go func() {
 		defer close(ch)
 		scanner := bufio.NewScanner(r)
-		// Allow large lines for session snapshots.
 		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
-		var dataLines []string
 		for scanner.Scan() {
 			line := scanner.Text()
-
 			if line == "" {
-				if len(dataLines) > 0 {
-					data := strings.Join(dataLines, "\n")
-					dataLines = nil
+				continue
+			}
 
-					var event Event
-					if err := json.Unmarshal([]byte(data), &event); err != nil {
-						ch <- Event{
-							Type:  "error",
-							Error: &ACPError{Message: fmt.Sprintf("failed to parse SSE event: %v", err)},
-						}
-						continue
-					}
-					ch <- event
+			var event Event
+			if err := json.Unmarshal([]byte(line), &event); err != nil {
+				ch <- Event{
+					Type:  "error",
+					Error: &ACPError{Message: fmt.Sprintf("failed to parse event: %v", err)},
 				}
 				continue
 			}
-
-			if strings.HasPrefix(line, "data:") {
-				value := strings.TrimPrefix(line, "data:")
-				value = strings.TrimPrefix(value, " ")
-				dataLines = append(dataLines, value)
-				continue
-			}
-
-			// Ignore event:, id:, retry:, and comment lines per SSE spec.
+			ch <- event
 		}
 	}()
 	return ch

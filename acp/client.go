@@ -129,7 +129,7 @@ func (c *Client) CreateRunAsync(ctx context.Context, agentName string, input []M
 	return c.createRun(ctx, body)
 }
 
-// CreateRunStream creates a run and returns a channel of SSE events.
+// CreateRunStream creates a run and returns a channel of streaming events.
 func (c *Client) CreateRunStream(ctx context.Context, agentName string, input []Message, sessionID string) (<-chan Event, error) {
 	body := RunCreateRequest{
 		AgentName: agentName,
@@ -176,7 +176,7 @@ func (c *Client) ResumeRun(ctx context.Context, runID string, resume *AwaitResum
 	return c.resumeRun(ctx, runID, body)
 }
 
-// ResumeRunStream resumes an awaiting run and returns a channel of SSE events.
+// ResumeRunStream resumes an awaiting run and returns a channel of streaming events.
 func (c *Client) ResumeRunStream(ctx context.Context, runID string, resume *AwaitResume) (<-chan Event, error) {
 	body := RunResumeRequest{
 		RunID:       runID,
@@ -280,7 +280,7 @@ func (c *Client) createRunStream(ctx context.Context, body RunCreateRequest) (<-
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Accept", ContentTypeNDJSON)
 	c.setHeaders(req)
 
 	resp, err := c.httpClient.Do(req)
@@ -293,8 +293,8 @@ func (c *Client) createRunStream(ctx context.Context, body RunCreateRequest) (<-
 		return nil, c.readError(resp)
 	}
 
-	// Stream body is kept open; the SSE parser goroutine owns closing it.
-	return ParseSSEStream(resp.Body), nil
+	// Stream body is kept open; the parser goroutine owns closing it.
+	return ParseStream(resp.Body), nil
 }
 
 func (c *Client) resumeRun(ctx context.Context, runID string, body RunResumeRequest) (*Run, error) {
@@ -340,7 +340,7 @@ func (c *Client) resumeRunStream(ctx context.Context, runID string, body RunResu
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Accept", ContentTypeNDJSON)
 	c.setHeaders(req)
 
 	resp, err := c.httpClient.Do(req)
@@ -353,7 +353,7 @@ func (c *Client) resumeRunStream(ctx context.Context, runID string, body RunResu
 		return nil, c.readError(resp)
 	}
 
-	return ParseSSEStream(resp.Body), nil
+	return ParseStream(resp.Body), nil
 }
 
 func (c *Client) setHeaders(req *http.Request) {

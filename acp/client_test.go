@@ -131,7 +131,7 @@ func TestClientCreateRunStream(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/runs", r.URL.Path)
 
-		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Content-Type", ContentTypeNDJSON)
 		w.WriteHeader(http.StatusOK)
 
 		events := []string{
@@ -141,7 +141,7 @@ func TestClientCreateRunStream(t *testing.T) {
 			`{"type":"run.completed","run":{"agent_name":"echo","run_id":"r1","status":"completed","output":[],"created_at":"2025-01-01T00:00:00Z"}}`,
 		}
 		for _, e := range events {
-			fmt.Fprintf(w, "data: %s\n\n", e)
+			fmt.Fprintf(w, "%s\n", e)
 		}
 	}))
 	defer server.Close()

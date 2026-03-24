@@ -283,7 +283,7 @@ func (h *ServerHook) handleCreateRun(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleStreamRun streams SSE events for a run, including session message updates.
+// handleStreamRun streams NDJSON events for a run, including session message updates.
 func (h *ServerHook) handleStreamRun(w http.ResponseWriter, r *http.Request, rd *runData, prompt, sessionID string, submitter plugin.PromptSubmitter) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -291,20 +291,20 @@ func (h *ServerHook) handleStreamRun(w http.ResponseWriter, r *http.Request, rd 
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Content-Type", ContentTypeNDJSON)
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Run-ID", rd.getRun().RunID)
 	w.WriteHeader(http.StatusOK)
 
 	for _, e := range rd.getEvents() {
-		writeSSE(w, e)
+		WriteEvent(w, e)
 	}
 	flusher.Flush()
 
 	sub := rd.subscribe()
 
-	// Detach from the HTTP request context so the run survives SSE
+	// Detach from the HTTP request context so the run survives
 	// disconnects. The run should only be canceled by server shutdown
 	// or explicit cancel requests.
 	go h.executeRun(context.WithoutCancel(r.Context()), rd, prompt, sessionID, submitter)
@@ -317,7 +317,7 @@ func (h *ServerHook) handleStreamRun(w http.ResponseWriter, r *http.Request, rd 
 			if !ok {
 				return
 			}
-			writeSSE(w, event)
+			WriteEvent(w, event)
 			flusher.Flush()
 		}
 	}
@@ -554,7 +554,7 @@ func (h *ServerHook) handleListRunEvents(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if strings.Contains(r.Header.Get("Accept"), "text/event-stream") {
+	if strings.Contains(r.Header.Get("Accept"), ContentTypeNDJSON) {
 		h.handleStreamRunEvents(w, r, rd)
 		return
 	}
@@ -564,7 +564,7 @@ func (h *ServerHook) handleListRunEvents(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// handleStreamRunEvents streams SSE events for an existing run. It replays
+// handleStreamRunEvents streams NDJSON events for an existing run. It replays
 // all historical events, then streams new ones until the run reaches a
 // terminal state. This allows clients to reconnect to in-progress runs.
 func (h *ServerHook) handleStreamRunEvents(w http.ResponseWriter, r *http.Request, rd *runData) {
@@ -574,7 +574,7 @@ func (h *ServerHook) handleStreamRunEvents(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Content-Type", ContentTypeNDJSON)
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Run-ID", rd.getRun().RunID)
@@ -586,7 +586,7 @@ func (h *ServerHook) handleStreamRunEvents(w http.ResponseWriter, r *http.Reques
 
 	// Replay all historical events.
 	for _, e := range rd.getEvents() {
-		writeSSE(w, e)
+		WriteEvent(w, e)
 	}
 	flusher.Flush()
 
@@ -601,7 +601,7 @@ func (h *ServerHook) handleStreamRunEvents(w http.ResponseWriter, r *http.Reques
 			if !ok {
 				return
 			}
-			writeSSE(w, event)
+			WriteEvent(w, event)
 			flusher.Flush()
 		}
 	}
@@ -639,13 +639,7 @@ func writeError(w http.ResponseWriter, status int, message string) {
 	json.NewEncoder(w).Encode(ACPError{Code: status, Message: message})
 }
 
-func writeSSE(w http.ResponseWriter, event Event) {
-	data, err := json.Marshal(event)
-	if err != nil {
-		return
-	}
-	fmt.Fprintf(w, "data: %s\n\n", data)
-}
+
 
 func runPtr(r Run) *Run {
 	return &r
