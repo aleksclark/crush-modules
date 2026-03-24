@@ -305,6 +305,16 @@ async fn setup() -> IntegrationEnv {
         .expect("crush not ready");
     eprintln!("[setup] crush ACP ready — all systems go");
 
+    eprintln!("[setup] warming up: sending initial prompt to establish session");
+    let warmup = client
+        .new_session("Say OK.")
+        .await
+        .expect("warmup prompt failed");
+    eprintln!(
+        "[setup] warmup complete: session={}",
+        warmup.run.as_ref().map(|r| r.session_id.as_str()).unwrap_or("(none)")
+    );
+
     IntegrationEnv {
         ollama_container: container_name,
         _crush_child: crush_cmd,
