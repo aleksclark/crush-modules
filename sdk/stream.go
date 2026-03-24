@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
 
 const contentTypeNDJSON = "application/x-ndjson"
@@ -27,9 +28,13 @@ func parseStream(r io.Reader) <-chan Event {
 
 			var event Event
 			if err := json.Unmarshal([]byte(line), &event); err != nil {
+				msg := fmt.Sprintf("failed to parse event: %v", err)
+				if looksLikeSSE(line) {
+					msg = fmt.Sprintf("server sent SSE-formatted data instead of NDJSON (got line starting with %q) — the ACP server must use streamable HTTP (application/x-ndjson), not SSE (text/event-stream)", truncatePrefix(line, 40))
+				}
 				ch <- Event{
 					Type:  EventError,
-					Error: &ACPError{Message: fmt.Sprintf("failed to parse event: %v", err)},
+					Error: &ACPError{Message: msg},
 				}
 				continue
 			}
@@ -37,4 +42,20 @@ func parseStream(r io.Reader) <-chan Event {
 		}
 	}()
 	return ch
+}
+
+func looksLikeSSE(line string) bool {
+	return strings.HasPrefix(line, "data:") ||
+		strings.HasPrefix(line, "event:") ||
+		strings.HasPrefix(line, "id:") ||
+		strings.HasPrefix(line, "retry:") ||
+		strings.HasPrefix(line, ":") ||
+		line == "[DONE]"
+}
+
+func truncatePrefix(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
 }

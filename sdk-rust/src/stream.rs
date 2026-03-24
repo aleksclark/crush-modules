@@ -23,6 +23,27 @@ pub(crate) fn parse_stream(
                 if line.is_empty() {
                     return None;
                 }
+                if looks_like_sse(&line) {
+                    let preview = if line.len() > 40 { &line[..40] } else { &line };
+                    return Some(Event {
+                        event_type: EventType::Error,
+                        run: None,
+                        message: None,
+                        part: None,
+                        error: Some(AcpError {
+                            code: 0,
+                            message: format!(
+                                "server sent SSE-formatted data instead of NDJSON \
+                                 (got line starting with {:?}) \u{2014} the ACP server must use \
+                                 streamable HTTP (application/x-ndjson), not SSE \
+                                 (text/event-stream)",
+                                preview,
+                            ),
+                            data: None,
+                        }),
+                        generic: None,
+                    });
+                }
                 match serde_json::from_str::<Event>(&line) {
                     Ok(event) => Some(event),
                     Err(e) => Some(Event {
@@ -54,4 +75,61 @@ pub(crate) fn parse_stream(
         }
     }))
         as std::pin::Pin<Box<dyn futures::Stream<Item = Event> + Send>>
+}
+
+/// Returns true if the line looks like an SSE field rather than raw NDJSON.
+fn looks_like_sse(line: &str) -> bool {
+    line.starts_with("data:")
+        || line.starts_with("event:")
+        || line.starts_with("id:")
+        || line.starts_with("retry:")
+        || line.starts_with(':')
+        || line == "[DONE]"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_looks_like_sse_plain_json() {
+        assert!(!looks_like_sse(r#"{"type":"error"}"#));
+    }
+
+    #[test]
+    fn test_looks_like_sse_data_prefix() {
+        assert!(looks_like_sse(r#"data: {"type":"error"}"#));
+        assert!(looks_like_sse(r#"data:{"type":"error"}"#));
+    }
+
+    #[test]
+    fn test_looks_like_sse_event_line() {
+        assert!(looks_like_sse("event: message"));
+    }
+
+    #[test]
+    fn test_looks_like_sse_id_line() {
+        assert!(looks_like_sse("id: 123"));
+    }
+
+    #[test]
+    fn test_looks_like_sse_retry_line() {
+        assert!(looks_like_sse("retry: 3000"));
+    }
+
+    #[test]
+    fn test_looks_like_sse_comment() {
+        assert!(looks_like_sse(": heartbeat"));
+        assert!(looks_like_sse(":"));
+    }
+
+    #[test]
+    fn test_looks_like_sse_done() {
+        assert!(looks_like_sse("[DONE]"));
+    }
+
+    #[test]
+    fn test_looks_like_sse_garbage() {
+        assert!(!looks_like_sse("not-json-at-all"));
+    }
 }

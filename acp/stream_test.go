@@ -85,6 +85,59 @@ func TestParseStreamErrorEvent(t *testing.T) {
 	require.Equal(t, "internal error", events[0].Error.Message)
 }
 
+func TestParseStreamDetectsSSE(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		stream string
+	}{
+		{"data prefix with space", "data: {\"type\":\"message.part\"}\n"},
+		{"data prefix no space", "data:{\"type\":\"message.part\"}\n"},
+		{"event line", "event: message\n"},
+		{"done marker", "[DONE]\n"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			events := collectEvents(t, tt.stream)
+			require.Len(t, events, 1)
+			require.Equal(t, EventError, events[0].Type)
+			require.Contains(t, events[0].Error.Message, "server sent SSE-formatted data instead of NDJSON")
+			require.Contains(t, events[0].Error.Message, "application/x-ndjson")
+		})
+	}
+}
+
+func TestLooksLikeSSE(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		line string
+		want bool
+	}{
+		{"plain json", `{"type":"error"}`, false},
+		{"data prefix with space", `data: {"type":"error"}`, true},
+		{"data prefix no space", `data:{"type":"error"}`, true},
+		{"event line", "event: message", true},
+		{"id line", "id: 123", true},
+		{"retry line", "retry: 3000", true},
+		{"sse comment", ": heartbeat", true},
+		{"done marker", "[DONE]", true},
+		{"random garbage", "not-json-at-all", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := looksLikeSSE(tt.line)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func collectEvents(t *testing.T, stream string) []Event {
 	t.Helper()
 	ch := ParseStream(strings.NewReader(stream))

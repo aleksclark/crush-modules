@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
 
 // ContentTypeNDJSON is the MIME type for newline-delimited JSON streams.
@@ -28,9 +29,13 @@ func ParseStream(r io.Reader) <-chan Event {
 
 			var event Event
 			if err := json.Unmarshal([]byte(line), &event); err != nil {
+				msg := fmt.Sprintf("failed to parse event: %v", err)
+				if looksLikeSSE(line) {
+					msg = fmt.Sprintf("server sent SSE-formatted data instead of NDJSON (got line starting with %q) — the ACP server must use streamable HTTP (application/x-ndjson), not SSE (text/event-stream)", truncatePrefix(line, 40))
+				}
 				ch <- Event{
 					Type:  EventError,
-					Error: &ACPError{Message: fmt.Sprintf("failed to parse event: %v", err)},
+					Error: &ACPError{Message: msg},
 				}
 				continue
 			}
@@ -38,6 +43,25 @@ func ParseStream(r io.Reader) <-chan Event {
 		}
 	}()
 	return ch
+}
+
+// looksLikeSSE returns true if the line looks like an SSE field (data:,
+// event:, id:, retry:, or a comment starting with ":").
+func looksLikeSSE(line string) bool {
+	return strings.HasPrefix(line, "data:") ||
+		strings.HasPrefix(line, "event:") ||
+		strings.HasPrefix(line, "id:") ||
+		strings.HasPrefix(line, "retry:") ||
+		strings.HasPrefix(line, ":") ||
+		line == "[DONE]"
+}
+
+// truncatePrefix returns at most n bytes of s for use in error messages.
+func truncatePrefix(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
 }
 
 // WriteEvent marshals an event to JSON and writes it as a single NDJSON line.
