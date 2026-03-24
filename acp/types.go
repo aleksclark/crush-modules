@@ -1,7 +1,8 @@
 // Package acp provides an Agent Communication Protocol (ACP) client for Crush.
 //
-// ACP is a REST+SSE protocol that lets agents discover and invoke other agents
-// over HTTP. This plugin exposes remote ACP agents as tools the LLM can call.
+// ACP is a REST protocol that lets agents discover and invoke other agents
+// over HTTP, using Streamable HTTP (NDJSON) for streaming responses.
+// This plugin exposes remote ACP agents as tools the LLM can call.
 //
 // The plugin is DISABLED by default. To enable it, configure at least one server
 // in crush.json:
@@ -169,7 +170,7 @@ type AgentsListResponse struct {
 	Agents []AgentManifest `json:"agents"`
 }
 
-// EventType identifies the kind of SSE event.
+// EventType identifies the kind of streaming event.
 type EventType string
 
 const (
@@ -188,7 +189,7 @@ const (
 	EventGeneric          EventType = "generic"
 )
 
-// Event is a discriminated union of all SSE event types.
+// Event is a discriminated union of all streaming event types.
 type Event struct {
 	Type    EventType    `json:"type"`
 	Run     *Run         `json:"run,omitempty"`

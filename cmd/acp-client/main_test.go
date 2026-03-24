@@ -11,13 +11,13 @@ import (
 	"testing"
 )
 
-func TestParseSSEStream(t *testing.T) {
+func TestParseStream(t *testing.T) {
 	t.Parallel()
 
 	t.Run("single event", func(t *testing.T) {
 		t.Parallel()
-		input := "data: {\"type\":\"run.created\",\"run\":{\"run_id\":\"r1\",\"status\":\"created\"}}\n\n"
-		ch := parseSSEStream(strings.NewReader(input))
+		input := "{\"type\":\"run.created\",\"run\":{\"run_id\":\"r1\",\"status\":\"created\"}}\n"
+		ch := parseStream(strings.NewReader(input))
 
 		ev, ok := <-ch
 		if !ok {
@@ -39,11 +39,11 @@ func TestParseSSEStream(t *testing.T) {
 	t.Run("multiple events", func(t *testing.T) {
 		t.Parallel()
 		input := "" +
-			"data: {\"type\":\"run.created\",\"run\":{\"run_id\":\"r1\",\"status\":\"created\"}}\n\n" +
-			"data: {\"type\":\"message.part\",\"part\":{\"content_type\":\"text/plain\",\"content\":\"hello\"}}\n\n" +
-			"data: {\"type\":\"run.completed\",\"run\":{\"run_id\":\"r1\",\"status\":\"completed\"}}\n\n"
+			"{\"type\":\"run.created\",\"run\":{\"run_id\":\"r1\",\"status\":\"created\"}}\n" +
+			"{\"type\":\"message.part\",\"part\":{\"content_type\":\"text/plain\",\"content\":\"hello\"}}\n" +
+			"{\"type\":\"run.completed\",\"run\":{\"run_id\":\"r1\",\"status\":\"completed\"}}\n"
 
-		ch := parseSSEStream(strings.NewReader(input))
+		ch := parseStream(strings.NewReader(input))
 
 		types := []string{}
 		for ev := range ch {
@@ -57,32 +57,24 @@ func TestParseSSEStream(t *testing.T) {
 		}
 	})
 
-	t.Run("multiline data", func(t *testing.T) {
+	t.Run("skips empty lines", func(t *testing.T) {
 		t.Parallel()
-		input := "data: {\"type\":\"message.part\",\ndata: \"part\":{\"content_type\":\"text/plain\",\"content\":\"hi\"}}\n\n"
-		ch := parseSSEStream(strings.NewReader(input))
+		input := "{\"type\":\"run.created\",\"run\":{\"run_id\":\"r1\",\"status\":\"created\"}}\n\n{\"type\":\"run.completed\",\"run\":{\"run_id\":\"r1\",\"status\":\"completed\"}}\n"
+		ch := parseStream(strings.NewReader(input))
 
-		ev := <-ch
-		if ev.Type != "message.part" {
-			t.Fatalf("expected message.part, got %s", ev.Type)
+		types := []string{}
+		for ev := range ch {
+			types = append(types, ev.Type)
 		}
-	})
-
-	t.Run("ignores comments and unknown fields", func(t *testing.T) {
-		t.Parallel()
-		input := ": this is a comment\nevent: ignore\nid: 123\nretry: 5000\ndata: {\"type\":\"run.created\",\"run\":{\"run_id\":\"r1\",\"status\":\"created\"}}\n\n"
-		ch := parseSSEStream(strings.NewReader(input))
-
-		ev := <-ch
-		if ev.Type != "run.created" {
-			t.Fatalf("expected run.created, got %s", ev.Type)
+		if len(types) != 2 {
+			t.Fatalf("expected 2 events, got %d: %v", len(types), types)
 		}
 	})
 
 	t.Run("invalid JSON emits error event", func(t *testing.T) {
 		t.Parallel()
-		input := "data: not-json\n\n"
-		ch := parseSSEStream(strings.NewReader(input))
+		input := "not-json\n"
+		ch := parseStream(strings.NewReader(input))
 
 		ev := <-ch
 		if ev.Type != "error" {
@@ -95,7 +87,7 @@ func TestParseSSEStream(t *testing.T) {
 
 	t.Run("empty stream", func(t *testing.T) {
 		t.Parallel()
-		ch := parseSSEStream(strings.NewReader(""))
+		ch := parseStream(strings.NewReader(""))
 
 		_, ok := <-ch
 		if ok {
@@ -202,8 +194,8 @@ func TestClientCreateRunStream(t *testing.T) {
 			if r.URL.Path != "/runs" {
 				t.Errorf("unexpected path: %s", r.URL.Path)
 			}
-			if r.Header.Get("Accept") != "text/event-stream" {
-				t.Errorf("expected Accept: text/event-stream, got: %s", r.Header.Get("Accept"))
+			if r.Header.Get("Accept") != "application/x-ndjson" {
+				t.Errorf("expected Accept: application/x-ndjson, got: %s", r.Header.Get("Accept"))
 			}
 
 			var body RunCreateRequest
@@ -215,7 +207,7 @@ func TestClientCreateRunStream(t *testing.T) {
 				t.Errorf("expected mode stream, got %s", body.Mode)
 			}
 
-			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Content-Type", "application/x-ndjson")
 			w.WriteHeader(http.StatusOK)
 
 			flusher, ok := w.(http.Flusher)
@@ -232,7 +224,7 @@ func TestClientCreateRunStream(t *testing.T) {
 
 			for _, ev := range events {
 				data, _ := json.Marshal(ev)
-				fmt.Fprintf(w, "data: %s\n\n", data)
+				fmt.Fprintf(w, "%s\n", data)
 				flusher.Flush()
 			}
 		}))
@@ -262,7 +254,6 @@ func TestClientCreateRunStream(t *testing.T) {
 			t.Fatalf("expected 4 events, got %d", len(collected))
 		}
 
-		// Check message parts were streamed.
 		var text string
 		for _, ev := range collected {
 			if ev.Type == "message.part" && ev.Part != nil {
@@ -301,16 +292,15 @@ func TestClientCreateRunStream(t *testing.T) {
 
 		started := make(chan struct{})
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Content-Type", "application/x-ndjson")
 			w.WriteHeader(http.StatusOK)
 			flusher := w.(http.Flusher)
 
 			data, _ := json.Marshal(Event{Type: "run.created", Run: &Run{RunID: "r1", Status: "created"}})
-			fmt.Fprintf(w, "data: %s\n\n", data)
+			fmt.Fprintf(w, "%s\n", data)
 			flusher.Flush()
 
 			close(started)
-			// Block until context is cancelled.
 			<-r.Context().Done()
 		}))
 		defer server.Close()
@@ -327,7 +317,6 @@ func TestClientCreateRunStream(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		// Wait for at least one event.
 		<-started
 		ev := <-events
 		if ev.Type != "run.created" {
@@ -336,7 +325,6 @@ func TestClientCreateRunStream(t *testing.T) {
 
 		cancel()
 
-		// Drain remaining.
 		for range events {
 		}
 		if err := <-errCh; err != nil && err != context.Canceled {
@@ -353,11 +341,11 @@ func TestClientCreateRunStream(t *testing.T) {
 				t.Errorf("expected session_id my-session, got %s", body.SessionID)
 			}
 
-			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Content-Type", "application/x-ndjson")
 			w.WriteHeader(http.StatusOK)
 			flusher := w.(http.Flusher)
 			data, _ := json.Marshal(Event{Type: "run.completed", Run: &Run{RunID: "r1", Status: "completed", SessionID: "my-session"}})
-			fmt.Fprintf(w, "data: %s\n\n", data)
+			fmt.Fprintf(w, "%s\n", data)
 			flusher.Flush()
 		}))
 		defer server.Close()
@@ -386,7 +374,7 @@ func TestStreamRun(t *testing.T) {
 	t.Run("collects text output", func(t *testing.T) {
 		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Content-Type", "application/x-ndjson")
 			w.WriteHeader(http.StatusOK)
 			flusher := w.(http.Flusher)
 
@@ -398,7 +386,7 @@ func TestStreamRun(t *testing.T) {
 			}
 			for _, ev := range events {
 				data, _ := json.Marshal(ev)
-				fmt.Fprintf(w, "data: %s\n\n", data)
+				fmt.Fprintf(w, "%s\n", data)
 				flusher.Flush()
 			}
 		}))
@@ -418,13 +406,13 @@ func TestStreamRun(t *testing.T) {
 	t.Run("reports run failure", func(t *testing.T) {
 		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Content-Type", "application/x-ndjson")
 			w.WriteHeader(http.StatusOK)
 			flusher := w.(http.Flusher)
 
 			ev := Event{Type: "run.failed", Run: &Run{RunID: "r1", Status: "failed", Error: &ACPError{Message: "something broke"}}}
 			data, _ := json.Marshal(ev)
-			fmt.Fprintf(w, "data: %s\n\n", data)
+			fmt.Fprintf(w, "%s\n", data)
 			flusher.Flush()
 		}))
 		defer server.Close()
@@ -443,7 +431,7 @@ func TestStreamRun(t *testing.T) {
 	t.Run("captures session ID from run events", func(t *testing.T) {
 		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Content-Type", "application/x-ndjson")
 			w.WriteHeader(http.StatusOK)
 			flusher := w.(http.Flusher)
 
@@ -454,7 +442,7 @@ func TestStreamRun(t *testing.T) {
 			}
 			for _, ev := range events {
 				data, _ := json.Marshal(ev)
-				fmt.Fprintf(w, "data: %s\n\n", data)
+				fmt.Fprintf(w, "%s\n", data)
 				flusher.Flush()
 			}
 		}))
@@ -475,7 +463,6 @@ func TestStreamRun(t *testing.T) {
 func TestIsTerminal(t *testing.T) {
 	t.Parallel()
 
-	// A temp file is not a char device.
 	f, err := os.CreateTemp(t.TempDir(), "test")
 	if err != nil {
 		t.Fatalf("create temp file: %v", err)

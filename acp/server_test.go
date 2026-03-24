@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -276,7 +277,7 @@ func TestServerHandleListRunEvents(t *testing.T) {
 	require.Len(t, result.Events, 2)
 }
 
-func TestServerHandleListRunEventsSSE(t *testing.T) {
+func TestServerHandleListRunEventsStream(t *testing.T) {
 	t.Parallel()
 
 	h := newTestServerHook(t)
@@ -293,7 +294,7 @@ func TestServerHandleListRunEventsSSE(t *testing.T) {
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/runs/sse-run/events", ts.URL), nil)
 	require.NoError(t, err)
-	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Accept", ContentTypeNDJSON)
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
@@ -301,9 +302,9 @@ func TestServerHandleListRunEventsSSE(t *testing.T) {
 	defer resp.Body.Close()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
+	require.Equal(t, ContentTypeNDJSON, resp.Header.Get("Content-Type"))
 
-	events := ParseSSEStream(resp.Body)
+	events := ParseStream(resp.Body)
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
@@ -327,7 +328,7 @@ func TestServerHandleListRunEventsSSE(t *testing.T) {
 	require.Contains(t, types, EventRunCompleted)
 }
 
-func TestServerHandleListRunEventsSSEAlreadyCompleted(t *testing.T) {
+func TestServerHandleListRunEventsStreamAlreadyCompleted(t *testing.T) {
 	t.Parallel()
 
 	h := newTestServerHook(t)
@@ -346,7 +347,7 @@ func TestServerHandleListRunEventsSSEAlreadyCompleted(t *testing.T) {
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/runs/done-sse-run/events", ts.URL), nil)
 	require.NoError(t, err)
-	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Accept", ContentTypeNDJSON)
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
@@ -354,9 +355,9 @@ func TestServerHandleListRunEventsSSEAlreadyCompleted(t *testing.T) {
 	defer resp.Body.Close()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
+	require.Equal(t, ContentTypeNDJSON, resp.Header.Get("Content-Type"))
 
-	events := ParseSSEStream(resp.Body)
+	events := ParseStream(resp.Body)
 
 	var received []Event
 	for e := range events {
@@ -428,8 +429,14 @@ func TestServerExecuteRunWithMessages(t *testing.T) {
 func TestServerStartListensAndServesRequests(t *testing.T) {
 	t.Parallel()
 
+	// Get a free port by briefly listening on :0.
+	ln, err := net.Listen("tcp", ":0")
+	require.NoError(t, err)
+	port := ln.Addr().(*net.TCPAddr).Port
+	ln.Close()
+
 	app := plugin.NewApp(plugin.WithLogger(nil))
-	hook, err := NewServerHook(app, ACPServerConfig{Port: 0})
+	hook, err := NewServerHook(app, ACPServerConfig{Port: port})
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())

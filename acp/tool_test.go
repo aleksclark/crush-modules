@@ -229,7 +229,7 @@ func newEchoACPServer(t *testing.T) *httptest.Server {
 func newStreamACPServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Content-Type", ContentTypeNDJSON)
 		w.WriteHeader(http.StatusOK)
 
 		events := []string{
@@ -239,7 +239,7 @@ func newStreamACPServer(t *testing.T) *httptest.Server {
 			`{"type":"run.completed","run":{"agent_name":"echo","run_id":"r1","status":"completed","output":[],"created_at":"2025-01-01T00:00:00Z"}}`,
 		}
 		for _, e := range events {
-			fmt.Fprintf(w, "data: %s\n\n", e)
+			fmt.Fprintf(w, "%s\n", e)
 		}
 	}))
 }
@@ -247,14 +247,14 @@ func newStreamACPServer(t *testing.T) *httptest.Server {
 func newAwaitACPServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Content-Type", ContentTypeNDJSON)
 		w.WriteHeader(http.StatusOK)
 
 		events := []string{
 			`{"type":"run.awaiting","run":{"agent_name":"approval","run_id":"run-await-1","status":"awaiting","output":[],"await_request":{"message":{"role":"agent","parts":[{"content_type":"text/plain","content":"Do you approve?"}]}},"created_at":"2025-01-01T00:00:00Z"}}`,
 		}
 		for _, e := range events {
-			fmt.Fprintf(w, "data: %s\n\n", e)
+			fmt.Fprintf(w, "%s\n", e)
 		}
 	}))
 }

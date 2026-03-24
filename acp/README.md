@@ -19,7 +19,7 @@ Both modes can run simultaneously in the same Crush instance.
   - [API Endpoints](#api-endpoints)
   - [Run Modes](#run-modes)
   - [Run Lifecycle](#run-lifecycle)
-  - [SSE Events](#sse-events)
+  - [Streaming Events](#streaming-events)
   - [Interacting with the Server](#interacting-with-the-server)
 - [Client Mode](#client-mode)
   - [Configuration](#client-configuration)
@@ -179,7 +179,7 @@ curl http://localhost:8199/runs/<run_id>
 
 #### Stream
 
-Returns an SSE (`text/event-stream`) connection that emits events in real time
+Returns an NDJSON (`application/x-ndjson`) stream that emits events in real time
 as the run progresses. The stream closes when the run reaches a terminal state.
 
 ```bash
@@ -216,20 +216,16 @@ created ──> in-progress ──> completed
 
 Completed runs are kept in memory for 1 hour, then cleaned up automatically.
 
-### SSE Events
+### Streaming Events
 
-When using `mode: "stream"`, events are sent as `data:` lines in SSE format:
+When using `mode: "stream"`, events are sent as newline-delimited JSON (NDJSON):
 
 ```
-data: {"type":"run.created","run":{...}}
-
-data: {"type":"run.in-progress","run":{...}}
-
-data: {"type":"message.part","part":{"content_type":"text/plain","content":"Here are the files..."}}
-
-data: {"type":"message.completed","message":{...}}
-
-data: {"type":"run.completed","run":{...}}
+{"type":"run.created","run":{...}}
+{"type":"run.in-progress","run":{...}}
+{"type":"message.part","part":{"content_type":"text/plain","content":"Here are the files..."}}
+{"type":"message.completed","message":{...}}
+{"type":"run.completed","run":{...}}
 ```
 
 | Event Type | Payload | Description |

@@ -5,7 +5,7 @@ running in ephemeral pods with persistent, crash-recoverable sessions.
 
 ## Overview
 
-The Crush ACP server exposes a REST+SSE API for agent invocation with session
+The Crush ACP server exposes a REST API with Streamable HTTP (NDJSON) for agent invocation with session
 persistence. A client (typically an orchestrator like Tempotown) manages the
 lifecycle:
 
@@ -111,7 +111,7 @@ Submit a prompt. This is the primary interaction endpoint.
 |------|----------|----------|
 | `sync` | Blocks until complete, returns final `Run` | Simple scripts, testing |
 | `async` | Returns `202 Accepted` with `Run` immediately | Fire-and-forget, poll later |
-| `stream` | SSE event stream until terminal state | Production — crash recovery, real-time UI |
+| `stream` | NDJSON event stream until terminal state | Production — crash recovery, real-time UI |
 
 #### `GET /runs/{run_id}`
 
@@ -213,10 +213,11 @@ already exists, it is replaced (messages are deleted and re-created).
 
 ---
 
-### SSE Event Stream
+### Streaming Events (NDJSON)
 
-When `mode: "stream"` is used, the server returns an SSE stream. Each event
-is a `data:` line containing a JSON `Event` object.
+When `mode: "stream"` is used, the server returns a newline-delimited JSON
+(NDJSON) stream with `Content-Type: application/x-ndjson`. Each line is a
+complete JSON `Event` object.
 
 #### Event Types
 
@@ -237,23 +238,15 @@ is a `data:` line containing a JSON `Event` object.
 #### Event Format
 
 ```
-data: {"type":"run.created","run":{"run_id":"...","status":"created",...}}
-
-data: {"type":"run.in-progress","run":{"run_id":"...","status":"in-progress",...}}
-
-data: {"type":"session.message","generic":{"event_type":"created","message_id":"msg_001","session_id":"ses_abc","role":"user","content":"Fix the bug"}}
-
-data: {"type":"message.part","part":{"content_type":"text/plain","content":"I'll look at "}}
-
-data: {"type":"message.part","part":{"content_type":"text/plain","content":"the auth.go file..."}}
-
-data: {"type":"session.message","generic":{"event_type":"updated","message_id":"msg_002","session_id":"ses_abc","role":"assistant","content":"I'll look at the auth.go file...","tool_calls":[{"id":"tc_1","name":"view","input":"{\"file_path\":\"auth.go\"}","finished":true}]}}
-
-data: {"type":"message.completed","message":{"role":"agent","parts":[{"content_type":"text/plain","content":"Done. I fixed the login bug."}]}}
-
-data: {"type":"session.snapshot","generic":{"version":1,"session":{...},"messages":[...]}}
-
-data: {"type":"run.completed","run":{"run_id":"...","status":"completed","output":[...]}}
+{"type":"run.created","run":{"run_id":"...","status":"created",...}}
+{"type":"run.in-progress","run":{"run_id":"...","status":"in-progress",...}}
+{"type":"session.message","generic":{"event_type":"created","message_id":"msg_001","session_id":"ses_abc","role":"user","content":"Fix the bug"}}
+{"type":"message.part","part":{"content_type":"text/plain","content":"I'll look at "}}
+{"type":"message.part","part":{"content_type":"text/plain","content":"the auth.go file..."}}
+{"type":"session.message","generic":{"event_type":"updated","message_id":"msg_002","session_id":"ses_abc","role":"assistant","content":"I'll look at the auth.go file...","tool_calls":[{"id":"tc_1","name":"view","input":"{\"file_path\":\"auth.go\"}","finished":true}]}}
+{"type":"message.completed","message":{"role":"agent","parts":[{"content_type":"text/plain","content":"Done. I fixed the login bug."}]}}
+{"type":"session.snapshot","generic":{"version":1,"session":{...},"messages":[...]}}
+{"type":"run.completed","run":{"run_id":"...","status":"completed","output":[...]}}
 ```
 
 #### `session.message` Event Detail
@@ -331,7 +324,7 @@ ephemeral pods.
 
 ```python
 import json
-import sseclient  # pip install sseclient-py
+import requests
 
 SESSION_ID = "project-42-auth-fix"
 last_snapshot = None  # Persist this to your storage backend
@@ -352,11 +345,13 @@ def run_with_recovery(agent_url, prompt):
         "mode": "stream"
     }, stream=True)
 
-    client = sseclient.SSEClient(response)
+    # Parse the NDJSON stream.
     session_messages = []
 
-    for event in client.events():
-        data = json.loads(event.data)
+    for line in response.iter_lines():
+        if not line:
+            continue
+        data = json.loads(line)
         event_type = data["type"]
 
         if event_type == "message.part":
