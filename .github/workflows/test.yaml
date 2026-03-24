@@ -44,9 +44,36 @@ jobs:
             cd ..
           done
 
-      - name: Run unit tests
+      - name: Run Go plugin unit tests
         run: |
           for mod in acp ping otlp agent-status periodic-prompts subagents tempotown tavily; do
             echo "=== Testing $mod ==="
             cd $mod && go test -v ./... && cd ..
           done
+
+      - name: Run Go SDK tests
+        run: cd sdks/go && go test -v ./...
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: sdks/typescript/package-lock.json
+
+      - name: Run TypeScript SDK tests
+        run: |
+          cd sdks/typescript
+          npm ci
+          npx vitest run
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run Python SDK tests
+        run: |
+          cd sdks/python
+          pip install -e ".[dev]"
+          pytest -v
