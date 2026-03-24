@@ -6,6 +6,7 @@ dist
 *.zip
 build
 crush-extended
+/acp-client
 go.work
 go.work.sum
 crush-plugin-poc
