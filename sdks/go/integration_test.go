@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aleksclark/crush-modules/sdk"
+	"github.com/aleksclark/crush-modules/sdks/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
