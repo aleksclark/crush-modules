@@ -1,0 +1,23 @@
+[package]
+name = "crush-acp-sdk"
+version = "0.1.0"
+edition = "2024"
+description = "Rust client SDK for the Crush Agent Communication Protocol (ACP)"
+license = "MIT"
+
+[dependencies]
+reqwest = { version = "0.12", features = ["json", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["io-util"] }
+tokio-util = { version = "0.7", features = ["io"] }
+futures = "0.3"
+thiserror = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+wiremock = "0.6"
+rand = "0.9"
+tempfile = "3"
+serde_json = "1"
