@@ -4,6 +4,7 @@ go 1.26.2
 
 require (
 	github.com/aleksclark/crush-modules/agent-status v0.0.0-00010101000000-000000000000
+	github.com/aleksclark/crush-modules/kuri v0.0.0-00010101000000-000000000000
 	github.com/aleksclark/crush-modules/otlp v0.0.0-00010101000000-000000000000
 	github.com/aleksclark/crush-modules/periodic-prompts v0.0.0-00010101000000-000000000000
 	github.com/aleksclark/crush-modules/subagents v0.0.0-00010101000000-000000000000
@@ -252,3 +253,5 @@ replace github.com/aleksclark/crush-modules/subagents => ./subagents
 replace github.com/aleksclark/crush-modules/tempotown => ./tempotown
 
 replace github.com/aleksclark/crush-modules/tavily => ./tavily
+
+replace github.com/aleksclark/crush-modules/kuri => ./kuri
