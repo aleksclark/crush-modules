@@ -29,7 +29,7 @@ func init() {
 		if err := app.LoadConfig("kuri", &cfg); err != nil {
 			return nil, err
 		}
-		return NewFetchTool(cfg), nil
+		return NewFetchTool(cfg, app.WorkingDir()), nil
 	}, &Config{})
 
 	plugin.RegisterToolWithConfig(BrowserToolName, func(ctx context.Context, app *plugin.App) (plugin.Tool, error) {
