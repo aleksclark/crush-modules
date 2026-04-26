@@ -2,9 +2,16 @@ package kuri
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"fmt"
+	"io"
+	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -27,7 +34,9 @@ DO NOT use this tool when you need to:
 <usage>
 - Provide URL to fetch content from
 - Specify desired output format (text, markdown, html, json, or links)
+- Optional: provide file_path to control where the file is saved
 - Optional: enable JavaScript execution for dynamic content
+- Content is always saved to a file and the path is returned
 </usage>
 
 <features>
@@ -48,19 +57,22 @@ DO NOT use this tool when you need to:
 - Use "json" format for structured output with metadata
 - Enable js for pages with inline script-rendered content
 - For full browser interaction, use agentic_browser instead
+- Provide file_path to choose where the file is saved; otherwise a name is derived from the URL
+- Use the View tool to read the saved file
 </tips>
 `
 
 // FetchParams defines the parameters for the kuri_fetch tool.
 type FetchParams struct {
-	URL     string `json:"url" jsonschema:"description=The URL to fetch content from,required"`
-	Format  string `json:"format,omitempty" jsonschema:"description=Output format: text, markdown (default), html, json, or links,enum=text,enum=markdown,enum=html,enum=json,enum=links,default=markdown"`
-	JS      bool   `json:"js,omitempty" jsonschema:"description=Execute inline JavaScript via QuickJS engine,default=false"`
-	Timeout int    `json:"timeout,omitempty" jsonschema:"description=Timeout in seconds (max 120),default=30"`
+	URL      string `json:"url" jsonschema:"description=The URL to fetch content from,required"`
+	Format   string `json:"format,omitempty" jsonschema:"description=Output format: text, markdown (default), html, json, or links,enum=text,enum=markdown,enum=html,enum=json,enum=links,default=markdown"`
+	FilePath string `json:"file_path,omitempty" jsonschema:"description=Local file path to save the fetched content to. If omitted a filename is derived from the URL."`
+	JS       bool   `json:"js,omitempty" jsonschema:"description=Execute inline JavaScript via QuickJS engine,default=false"`
+	Timeout  int    `json:"timeout,omitempty" jsonschema:"description=Timeout in seconds (max 120),default=30"`
 }
 
 // NewFetchTool creates the kuri_fetch tool.
-func NewFetchTool(cfg Config) fantasy.AgentTool {
+func NewFetchTool(cfg Config, workingDir string) fantasy.AgentTool {
 	kuriFetchBin := cfg.KuriFetchPath
 	if kuriFetchBin == "" {
 		kuriFetchBin = "kuri-fetch"
@@ -116,17 +128,93 @@ func NewFetchTool(cfg Config) fantasy.AgentTool {
 			}
 
 			content := stdout.String()
-			if len(content) > maxFetchResponseSize {
-				content = content[:maxFetchResponseSize] + "\n\n[Content truncated at 100KB]"
-			}
-
 			if content == "" {
 				return fantasy.NewTextResponse("(empty response)"), nil
 			}
 
-			return fantasy.NewTextResponse(content), nil
+			filePath := params.FilePath
+			if filePath == "" {
+				filePath = filenameFromURL(params.URL, format)
+			}
+
+			return writeToFile(content, filePath, workingDir)
 		},
 	)
 }
 
-const maxFetchResponseSize = 100 * 1024
+var safeFilenameRe = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
+
+// filenameFromURL derives a reasonable filename from a URL and format.
+func filenameFromURL(rawURL, format string) string {
+	ext := formatToExt(format)
+
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Host == "" {
+		return "fetch-output" + ext
+	}
+
+	name := parsed.Host
+	if p := strings.TrimSuffix(parsed.Path, "/"); p != "" && p != "/" {
+		name += "_" + strings.ReplaceAll(strings.TrimPrefix(p, "/"), "/", "_")
+	}
+
+	name = safeFilenameRe.ReplaceAllString(name, "_")
+	if len(name) > 120 {
+		name = name[:120]
+	}
+
+	return name + ext
+}
+
+func formatToExt(format string) string {
+	switch format {
+	case "html":
+		return ".html"
+	case "json":
+		return ".json"
+	case "markdown":
+		return ".md"
+	case "links":
+		return ".txt"
+	default:
+		return ".txt"
+	}
+}
+
+// smartJoin joins two paths, treating the second as absolute if it is.
+func smartJoin(base, path string) string {
+	if smartIsAbs(path) {
+		return path
+	}
+	return filepath.Join(base, path)
+}
+
+func smartIsAbs(path string) bool {
+	if runtime.GOOS == "windows" {
+		return filepath.IsAbs(path) || strings.HasPrefix(filepath.ToSlash(path), "/")
+	}
+	return filepath.IsAbs(path)
+}
+
+func writeToFile(content, filePath, workingDir string) (fantasy.ToolResponse, error) {
+	absPath := smartJoin(workingDir, filePath)
+	relPath, _ := filepath.Rel(workingDir, absPath)
+	relPath = filepath.ToSlash(cmp.Or(relPath, absPath))
+
+	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
+		return fantasy.ToolResponse{}, fmt.Errorf("failed to create parent directories: %w", err)
+	}
+
+	f, err := os.Create(absPath)
+	if err != nil {
+		return fantasy.ToolResponse{}, fmt.Errorf("failed to create file: %w", err)
+	}
+	defer f.Close()
+
+	n, err := io.WriteString(f, content)
+	if err != nil {
+		return fantasy.ToolResponse{}, fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return fantasy.NewTextResponse(fmt.Sprintf("Successfully saved %d bytes to %s", n, relPath)), nil
+}
