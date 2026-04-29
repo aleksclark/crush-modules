@@ -2,10 +2,15 @@ package a2a
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"iter"
 	"log/slog"
+	"net/http"
+	"strings"
 	"sync"
+	"time"
 
 	a2acore "github.com/a2aproject/a2a-go/v2/a2a"
 	"github.com/a2aproject/a2a-go/v2/a2aclient"
@@ -17,8 +22,10 @@ type Client struct {
 	headers map[string]string
 	logger  *slog.Logger
 
-	mu     sync.Mutex
-	client *a2aclient.Client
+	mu        sync.Mutex
+	client    *a2aclient.Client
+	card      *a2acore.AgentCard
+	contextID string
 }
 
 // ClientOption configures a Client.
@@ -105,6 +112,63 @@ func (c *Client) CancelTask(ctx context.Context, taskID a2acore.TaskID) (*a2acor
 		return nil, err
 	}
 	return client.CancelTask(ctx, &a2acore.CancelTaskRequest{ID: taskID})
+}
+
+// FetchAgentCard fetches the agent card from /.well-known/agent-card.json.
+func (c *Client) FetchAgentCard(ctx context.Context) (*a2acore.AgentCard, error) {
+	c.mu.Lock()
+	if c.card != nil {
+		card := c.card
+		c.mu.Unlock()
+		return card, nil
+	}
+	c.mu.Unlock()
+
+	cardURL := strings.TrimRight(c.baseURL, "/") + "/.well-known/agent-card.json"
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cardURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create agent card request: %w", err)
+	}
+	for k, v := range c.headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch agent card from %s: %w", cardURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return nil, fmt.Errorf("agent card HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	var card a2acore.AgentCard
+	if err := json.NewDecoder(resp.Body).Decode(&card); err != nil {
+		return nil, fmt.Errorf("decode agent card: %w", err)
+	}
+
+	c.mu.Lock()
+	c.card = &card
+	c.mu.Unlock()
+
+	return &card, nil
+}
+
+// LastContextID returns the last contextId received from this server.
+func (c *Client) LastContextID() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.contextID
+}
+
+// SetContextID stores a contextId for auto-propagation in subsequent messages.
+func (c *Client) SetContextID(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.contextID = id
 }
 
 // Close destroys the underlying SDK client.

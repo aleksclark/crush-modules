@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"sync"
@@ -17,13 +19,19 @@ import (
 func TestListAgentsTool(t *testing.T) {
 	t.Parallel()
 
-	server := newJSONRPCServer(t, func(method string, params json.RawMessage) any {
-		return map[string]any{
-			"task": map[string]any{
-				"id": "task-list", "contextId": "ctx-list",
-				"status": map[string]any{"state": "TASK_STATE_COMPLETED"},
-			},
-		}
+	server := newAgentCardServer(t, map[string]any{
+		"name":        "test-agent",
+		"description": "A test agent",
+		"version":     "1.0.0",
+		"supportedInterfaces": []any{
+			map[string]any{"url": "http://localhost:9999", "protocolBinding": "JSONRPC", "protocolVersion": "1.0"},
+		},
+		"capabilities":     map[string]any{"streaming": true},
+		"defaultInputModes": []string{"text/plain"},
+		"defaultOutputModes": []string{"text/plain"},
+		"skills": []any{
+			map[string]any{"id": "echo", "name": "Echo", "description": "Echoes messages"},
+		},
 	})
 	defer server.Close()
 
@@ -36,7 +44,8 @@ func TestListAgentsTool(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.False(t, resp.IsError)
-	require.Contains(t, resp.Content, "test")
+	require.Contains(t, resp.Content, "test-agent")
+	require.Contains(t, resp.Content, "Echo")
 }
 
 func TestSendMessageTool(t *testing.T) {
@@ -233,4 +242,16 @@ func init() {
 	mgrOnce = sync.Once{}
 	mgrInstance = nil
 	mgrErr = nil
+}
+
+func newAgentCardServer(t *testing.T, card map[string]any) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/.well-known/agent-card.json" {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(card)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
 }

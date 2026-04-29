@@ -198,35 +198,47 @@ func (m *manager) listAgentsTool() fantasy.AgentTool {
 				return fantasy.NewTextErrorResponse(err.Error()), nil
 			}
 
-			msg := a2acore.NewMessage(a2acore.MessageRoleUser, a2acore.NewTextPart("list capabilities"))
-			result, err := client.SendMessage(ctx, msg)
+			card, err := client.FetchAgentCard(ctx)
 			if err != nil {
-				return fantasy.NewTextErrorResponse(fmt.Sprintf("failed to contact %s: %v", serverName, err)), nil
+				return fantasy.NewTextErrorResponse(fmt.Sprintf("failed to fetch agent card from %s: %v", serverName, err)), nil
+			}
+
+			type skillSummary struct {
+				ID          string   `json:"id"`
+				Name        string   `json:"name"`
+				Description string   `json:"description,omitempty"`
+				Tags        []string `json:"tags,omitempty"`
 			}
 
 			type agentSummary struct {
-				Name     string `json:"name"`
-				Server   string `json:"server"`
-				TaskID   string `json:"task_id,omitempty"`
-				Response string `json:"response,omitempty"`
+				Name        string         `json:"name"`
+				Description string         `json:"description,omitempty"`
+				Server      string         `json:"server"`
+				Version     string         `json:"version,omitempty"`
+				Streaming   bool           `json:"streaming"`
+				Skills      []skillSummary `json:"skills,omitempty"`
 			}
 
-			summary := agentSummary{
-				Name:   serverName,
-				Server: serverName,
-			}
-
-			switch v := result.(type) {
-			case *a2acore.Task:
-				summary.TaskID = string(v.ID)
-				if len(v.Artifacts) > 0 {
-					summary.Response = ExtractTextFromParts(v.Artifacts[0].Parts)
+			skills := make([]skillSummary, len(card.Skills))
+			for i, s := range card.Skills {
+				skills[i] = skillSummary{
+					ID:          s.ID,
+					Name:        s.Name,
+					Description: s.Description,
+					Tags:        s.Tags,
 				}
-			case *a2acore.Message:
-				summary.Response = ExtractText(v)
 			}
 
-			data, _ := json.MarshalIndent(summary, "", "  ")
+			summaries := []agentSummary{{
+				Name:        card.Name,
+				Description: card.Description,
+				Server:      serverName,
+				Version:     card.Version,
+				Streaming:   card.Capabilities.Streaming,
+				Skills:      skills,
+			}}
+
+			data, _ := json.MarshalIndent(summaries, "", "  ")
 			return fantasy.NewTextResponse(string(data)), nil
 		},
 	)
@@ -236,6 +248,7 @@ type SendMessageParams struct {
 	Input     string `json:"input" jsonschema:"description=Text message to send to the agent."`
 	Server    string `json:"server,omitempty" jsonschema:"description=Name of the A2A server. Uses the first configured server if omitted."`
 	ContextID string `json:"context_id,omitempty" jsonschema:"description=Context ID from a previous response for multi-turn conversations."`
+	Streaming bool   `json:"streaming,omitempty" jsonschema:"description=If true use SendStreamingMessage for SSE streaming."`
 }
 
 func (m *manager) sendMessageTool() fantasy.AgentTool {
@@ -256,18 +269,26 @@ func (m *manager) sendMessageTool() fantasy.AgentTool {
 				"server", serverName,
 			)
 
-			var result a2acore.SendMessageResult
-			if params.ContextID != "" {
-				result, err = client.SendMessageWithContext(ctx, params.Input, params.ContextID)
-			} else {
-				msg := a2acore.NewMessage(a2acore.MessageRoleUser, a2acore.NewTextPart(params.Input))
-				result, err = client.SendMessage(ctx, msg)
+			contextID := params.ContextID
+			if contextID == "" {
+				contextID = client.LastContextID()
 			}
 
+			msg := a2acore.NewMessage(a2acore.MessageRoleUser, a2acore.NewTextPart(params.Input))
+			if contextID != "" {
+				msg.ContextID = contextID
+			}
+
+			if params.Streaming {
+				return m.sendStreaming(ctx, client, msg)
+			}
+
+			result, err := client.SendMessage(ctx, msg)
 			if err != nil {
 				return fantasy.NewTextErrorResponse(fmt.Sprintf("failed to send message to %s: %v", serverName, err)), nil
 			}
 
+			propagateContext(client, result)
 			return formatResult(result), nil
 		},
 	)
@@ -361,6 +382,70 @@ func (m *manager) attachFileTool() fantasy.AgentTool {
 			return fantasy.NewTextResponse(fmt.Sprintf("Artifact %q attached to task %s", name, taskID)), nil
 		},
 	)
+}
+
+func (m *manager) sendStreaming(ctx context.Context, client *Client, msg *a2acore.Message) (fantasy.ToolResponse, error) {
+	stream, err := client.SendStreamingMessage(ctx, msg)
+	if err != nil {
+		return fantasy.NewTextErrorResponse(fmt.Sprintf("streaming failed: %v", err)), nil
+	}
+
+	var parts []string
+	var lastTask *a2acore.Task
+	for event, err := range stream {
+		if err != nil {
+			return fantasy.NewTextErrorResponse(fmt.Sprintf("stream error: %v", err)), nil
+		}
+		switch v := event.(type) {
+		case *a2acore.Task:
+			lastTask = v
+		case *a2acore.TaskStatusUpdateEvent:
+			if v.Status.State.Terminal() {
+				if v.Status.State == a2acore.TaskStateFailed && v.Status.Message != nil {
+					return fantasy.NewTextErrorResponse(ExtractText(v.Status.Message)), nil
+				}
+			}
+		case *a2acore.TaskArtifactUpdateEvent:
+			text := ExtractTextFromParts(v.Artifact.Parts)
+			if text != "" {
+				parts = append(parts, text)
+			}
+		case *a2acore.Message:
+			text := ExtractText(v)
+			if text != "" {
+				parts = append(parts, text)
+			}
+			if v.ContextID != "" {
+				client.SetContextID(v.ContextID)
+			}
+		}
+	}
+
+	if lastTask != nil {
+		propagateContext(client, lastTask)
+		if len(parts) == 0 {
+			return formatTask(lastTask), nil
+		}
+	}
+
+	if len(parts) > 0 {
+		return fantasy.NewTextResponse(strings.Join(parts, "")), nil
+	}
+
+	return fantasy.NewTextErrorResponse("no response received from streaming"), nil
+}
+
+func propagateContext(client *Client, result a2acore.SendMessageResult) {
+	switch v := result.(type) {
+	case *a2acore.Task:
+		if v.ContextID != "" {
+			client.SetContextID(v.ContextID)
+		}
+	case *a2acore.Message:
+		if v.ContextID != "" {
+			client.SetContextID(v.ContextID)
+		}
+	}
 }
 
 func formatResult(result a2acore.SendMessageResult) fantasy.ToolResponse {
