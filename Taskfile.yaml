@@ -45,6 +45,22 @@ tasks:
           --with ./tavily \
           --output {{.OUTPUT_DIR}}/crush
 
+  distro:default-a2a:
+    desc: Build a Crush distro with A2A instead of ACP (production)
+    deps: [build:xcrush]
+    cmds:
+      - |
+        {{.OUTPUT_DIR}}/xcrush build \
+          --crush {{.CRUSH_POC}} \
+          --with ./otlp \
+          --with ./agent-status \
+          --with ./periodic-prompts \
+          --with ./subagents \
+          --with ./tempotown \
+          --with ./a2a \
+          --with ./tavily \
+          --output {{.OUTPUT_DIR}}/crush-a2a
+
   distro:all:
     desc: Build a Crush distro with ALL plugins (including ping for testing)
     deps: [build:xcrush]
@@ -59,6 +75,7 @@ tasks:
           --with ./subagents \
           --with ./tempotown \
           --with ./acp \
+          --with ./a2a \
           --with ./tavily \
           --output {{.OUTPUT_DIR}}/crush
 
@@ -132,6 +149,22 @@ tasks:
           --with ./tavily \
           --output {{.OUTPUT_DIR}}/crush-tavily
 
+  distro:a2a:
+    desc: Build a Crush distro with A2A plugin (replaces ACP)
+    deps: [build:xcrush]
+    cmds:
+      - |
+        {{.OUTPUT_DIR}}/xcrush build \
+          --crush {{.CRUSH_POC}} \
+          --with ./otlp \
+          --with ./agent-status \
+          --with ./periodic-prompts \
+          --with ./subagents \
+          --with ./tempotown \
+          --with ./a2a \
+          --with ./tavily \
+          --output {{.OUTPUT_DIR}}/crush-a2a
+
   test:
     desc: Run unit tests for all plugins (skips e2e tests)
     cmds:
@@ -142,6 +175,7 @@ tasks:
       - cd subagents && go test -short ./...
       - cd tempotown && go test -short ./...
       - cd acp && go test -short ./...
+      - cd a2a && go test -short ./...
       - cd tavily && go test -short ./...
 
   test:e2e:
@@ -151,6 +185,7 @@ tasks:
       - cd ping && go test -v -tags e2e -run 'Plugin'
       - cd tempotown && go test -v -tags e2e -run 'Tempotown'
       - cd acp && go test -v -tags e2e -run 'ACP'
+      - cd a2a && go test -v -tags e2e -run 'A2A'
       - cd tavily && go test -v -tags e2e -run 'Tavily'
 
   clean:

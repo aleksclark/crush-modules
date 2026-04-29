@@ -17,9 +17,24 @@ builds:
     ldflags:
       - -s -w
 
-  # crush-extended - Crush with community plugins
+  # crush-extended - Crush with community plugins (ACP variant, default)
   - id: crush-extended
     main: ./cmd/crush-extended
+    binary: crush
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+  # crush-a2a - Crush with A2A plugin instead of ACP
+  - id: crush-a2a
+    main: ./cmd/crush-a2a
     binary: crush
     env:
       - CGO_ENABLED=0
@@ -53,6 +68,21 @@ archives:
       - crush-extended
     name_template: >-
       crush-extended_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    format: tar.gz
+    files:
+      - LICENSE*
+      - README*
+
+  - id: crush-a2a-archive
+    builds:
+      - crush-a2a
+    name_template: >-
+      crush-a2a_
       {{- .Version }}_
       {{- .Os }}_
       {{- if eq .Arch "amd64" }}x86_64

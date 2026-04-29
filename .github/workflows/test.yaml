@@ -35,10 +35,11 @@ jobs:
             tempotown/go.sum
             tavily/go.sum
             kuri/go.sum
+            a2a/go.sum
 
       - name: Update go.mod replacements for CI
         run: |
-          for mod in acp ping otlp agent-status periodic-prompts subagents tempotown tavily kuri; do
+          for mod in acp ping otlp agent-status periodic-prompts subagents tempotown tavily kuri a2a; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../
@@ -47,7 +48,7 @@ jobs:
 
       - name: Run Go plugin unit tests
         run: |
-          for mod in acp ping otlp agent-status periodic-prompts subagents tempotown tavily kuri; do
+          for mod in acp ping otlp agent-status periodic-prompts subagents tempotown tavily kuri a2a; do
             echo "=== Testing $mod ==="
             cd $mod && go test -v ./... && cd ..
           done
