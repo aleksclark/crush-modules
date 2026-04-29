@@ -19,6 +19,7 @@ require (
 	git.sr.ht/~jackmordaunt/go-toast v1.1.2 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/a2aproject/a2a-go/v2 v2.2.0 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.23 // indirect
 	github.com/charmbracelet/openai-go v0.0.0-20260319145158-d0740cc34266 // indirect
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
@@ -53,7 +54,7 @@ require (
 	charm.land/bubbles/v2 v2.1.0 // indirect
 	charm.land/bubbletea/v2 v2.0.6 // indirect
 	charm.land/catwalk v0.37.9 // indirect
-	charm.land/fantasy v0.20.0 // indirect
+	charm.land/fantasy v0.21.1 // indirect
 	charm.land/glamour/v2 v2.0.0 // indirect
 	charm.land/lipgloss/v2 v2.0.3 // indirect
 	charm.land/log/v2 v2.0.0 // indirect
@@ -67,6 +68,7 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/PuerkitoBio/goquery v1.12.0 // indirect
 	github.com/alecthomas/chroma/v2 v2.23.1 // indirect
+	github.com/aleksclark/crush-modules/a2a v0.0.0-00010101000000-000000000000
 	github.com/aleksclark/crush-modules/acp v0.0.0
 	github.com/aleksclark/crush-modules/tavily v0.0.0-00010101000000-000000000000
 	github.com/andybalholm/cascadia v1.3.3 // indirect
@@ -84,7 +86,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.16 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.20 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.0 // indirect
-	github.com/aws/smithy-go v1.25.0 // indirect
+	github.com/aws/smithy-go v1.25.1 // indirect
 	github.com/aymanbagabas/go-nativeclipboard v0.1.3 // indirect
 	github.com/aymanbagabas/go-udiff v0.4.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
@@ -148,10 +150,10 @@ require (
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jordanella/go-ansi-paintbrush v0.0.0-20240728195301-b7ad996ecf3d // indirect
-	github.com/kaptinlin/go-i18n v0.3.0 // indirect
-	github.com/kaptinlin/jsonpointer v0.4.17 // indirect
-	github.com/kaptinlin/jsonschema v0.7.7 // indirect
-	github.com/kaptinlin/messageformat-go v0.4.19 // indirect
+	github.com/kaptinlin/go-i18n v0.4.4 // indirect
+	github.com/kaptinlin/jsonpointer v0.4.19 // indirect
+	github.com/kaptinlin/jsonschema v0.7.11 // indirect
+	github.com/kaptinlin/messageformat-go v0.6.0 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
@@ -255,3 +257,5 @@ replace github.com/aleksclark/crush-modules/tempotown => ./tempotown
 replace github.com/aleksclark/crush-modules/tavily => ./tavily
 
 replace github.com/aleksclark/crush-modules/kuri => ./kuri
+
+replace github.com/aleksclark/crush-modules/a2a => ./a2a
