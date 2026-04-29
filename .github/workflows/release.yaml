@@ -41,6 +41,7 @@ jobs:
           go mod edit -replace github.com/aleksclark/crush-modules/tempotown=./tempotown
           go mod edit -replace github.com/aleksclark/crush-modules/tavily=./tavily
           go mod edit -replace github.com/aleksclark/crush-modules/kuri=./kuri
+          go mod edit -replace github.com/aleksclark/crush-modules/a2a=./a2a
           
           # Propagate replace directives from crush-plugin-poc's go.mod
           while IFS= read -r line; do
@@ -55,7 +56,7 @@ jobs:
           done < crush-plugin-poc/go.mod
           
           # Update plugin module replacements
-          for mod in acp otlp agent-status periodic-prompts subagents tempotown tavily kuri; do
+          for mod in acp a2a otlp agent-status periodic-prompts subagents tempotown tavily kuri; do
             cd $mod
             go mod edit -replace github.com/charmbracelet/crush=../crush-plugin-poc
             go mod edit -replace github.com/aleksclark/crush-modules=../
