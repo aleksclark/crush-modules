@@ -8,7 +8,7 @@ replace github.com/aleksclark/crush-modules => ../
 
 require (
 	charm.land/fantasy v0.21.1
-	github.com/a2aproject/a2a-go/v2 v2.2.0
+	github.com/a2aproject/a2a-go/v2 v2.2.1
 	github.com/aleksclark/crush-modules v0.0.0-00010101000000-000000000000
 	github.com/charmbracelet/crush v0.0.0
 	github.com/stretchr/testify v1.11.1
