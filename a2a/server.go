@@ -160,8 +160,10 @@ func (h *ServerHook) CurrentTaskID() a2acore.TaskID {
 
 func (h *ServerHook) Start(ctx context.Context) error {
 	executor := &crushExecutor{hook: h}
+	taskStore := newRetentionStore(TaskRetentionTTL, h.logger)
 	requestHandler := a2asrv.NewHandler(executor,
 		a2asrv.WithCapabilityChecks(&h.card.Capabilities),
+		a2asrv.WithTaskStore(taskStore),
 	)
 
 	mux := http.NewServeMux()
