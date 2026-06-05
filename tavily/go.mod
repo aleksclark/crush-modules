@@ -9,9 +9,9 @@ require (
 )
 
 require (
-	charm.land/fantasy v0.25.2 // indirect
+	charm.land/fantasy v0.29.0 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
-	github.com/charmbracelet/ultraviolet v0.0.0-20260416155717-489999b90468 // indirect
+	github.com/charmbracelet/ultraviolet v0.0.0-20260525132238-948f4557a654 // indirect
 	github.com/charmbracelet/x/ansi v0.11.7 // indirect
 	github.com/charmbracelet/x/conpty v0.2.0 // indirect
 	github.com/charmbracelet/x/exp/ordered v0.1.0 // indirect
@@ -26,14 +26,14 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/go-json-experiment/json v0.0.0-20260505212615-e40f80bf6836 // indirect
+	github.com/go-json-experiment/json v0.0.0-20260520185125-572e7c383686 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/kaptinlin/go-i18n v0.4.8 // indirect
-	github.com/kaptinlin/jsonpointer v0.4.23 // indirect
-	github.com/kaptinlin/jsonschema v0.7.14 // indirect
+	github.com/kaptinlin/go-i18n v0.4.9 // indirect
+	github.com/kaptinlin/jsonpointer v0.4.25 // indirect
+	github.com/kaptinlin/jsonschema v0.7.15 // indirect
 	github.com/kaptinlin/messageformat-go v0.6.4 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
