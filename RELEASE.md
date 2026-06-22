@@ -1,6 +1,6 @@
 # GoReleaser Configuration for Crush Modules
 
-This repository uses GoReleaser to build and release both `crush-extended` and `xcrush` binaries.
+This repository uses GoReleaser to build and release the `crush-extended`, `crush-a2a`, and `xcrush` binaries.
 
 ## Local Testing
 
@@ -33,10 +33,10 @@ git push origin master
 
 **What happens automatically:**
 1. GitHub Actions generates a CalVer tag (e.g., `2026.01.30.1`)
-2. Builds crush-extended and xcrush for all platforms
+2. Builds crush-extended, crush-a2a, and xcrush for all platforms
 3. Creates GitHub Release with binaries
 4. Updates Homebrew formulas in `aleksclark/homebrew-tap`
-5. Updates AUR packages (`crush-extended-bin`, `xcrush-bin`)
+5. Updates AUR packages (`crush-extended-bin`, `crush-a2a-bin`, `xcrush-bin`)
 
 **Timeline:** ~5-10 minutes from push to packages available
 
@@ -70,7 +70,7 @@ Examples:
 Before releases will work, you need to configure secrets and repositories. See [docs/SETUP.md](./docs/SETUP.md) for detailed setup instructions:
 
 - Create `aleksclark/homebrew-tap` repository
-- Initialize AUR packages (`crush-extended-bin`, `xcrush-bin`)
+- Initialize AUR packages (`crush-extended-bin`, `crush-a2a-bin`, `xcrush-bin`)
 - Add GitHub secrets: `HOMEBREW_TAP_GITHUB_TOKEN`, `AUR_SSH_KEY`
 
 ## Package Details
@@ -78,8 +78,15 @@ Before releases will work, you need to configure secrets and repositories. See [
 ### crush-extended
 - **Name**: crush-extended
 - **Description**: ⚠️ UNOFFICIAL, UNTESTED BUILD - Crush with community plugins
+- **Binary**: crush
 - **Conflicts with**: crush
-- **Plugins included**: otlp, agent-status, periodic-prompts
+- **Plugins included**: acp, kuri, otlp, agent-status, periodic-prompts, subagents, tempotown, tavily
+
+### crush-a2a
+- **Name**: crush-a2a
+- **Description**: ⚠️ UNOFFICIAL, UNTESTED BUILD - Crush with the A2A v1.0 protocol plugin (instead of ACP)
+- **Binary**: crush-a2a (distinctly named; coexists with `crush`/`crush-extended`)
+- **Plugins included**: a2a, kuri, otlp, agent-status, periodic-prompts, subagents, tempotown, tavily
 
 ### xcrush
 - **Name**: xcrush
@@ -113,4 +120,19 @@ sudo rpm -i crush-extended_VERSION_linux_x86_64.rpm
 ```bash
 brew tap aleksclark/tap
 brew install crush-extended
+```
+
+### crush-a2a (A2A protocol variant)
+
+`crush-a2a` ships through the same channels (GitHub Releases `.tar.gz`,
+`.deb`/`.rpm`, Homebrew, AUR) but installs a distinctly named `crush-a2a`
+binary, so it can coexist with `crush`/`crush-extended`. Substitute
+`crush-a2a` for `crush-extended` in any command above. Examples:
+
+```bash
+brew install crush-a2a
+# or download the archive
+curl -LO https://github.com/aleksclark/crush-modules/releases/latest/download/crush-a2a_VERSION_linux_x86_64.tar.gz
+tar xzf crush-a2a_VERSION_linux_x86_64.tar.gz
+sudo mv crush-a2a /usr/local/bin/
 ```

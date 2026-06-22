@@ -53,8 +53,7 @@ pkgdesc="Crush AI assistant with A2A v1.0 protocol plugin (unofficial build)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/${REPO}"
 license=('MIT')
-provides=('crush')
-conflicts=('crush' 'crush-extended-bin')
+provides=('crush-a2a')
 
 source_x86_64=("crush-a2a_\${pkgver}_linux_x86_64.tar.gz::https://github.com/${REPO}/releases/download/\${pkgver}/crush-a2a_\${pkgver}_linux_x86_64.tar.gz")
 source_aarch64=("crush-a2a_\${pkgver}_linux_arm64.tar.gz::https://github.com/${REPO}/releases/download/\${pkgver}/crush-a2a_\${pkgver}_linux_arm64.tar.gz")
@@ -63,7 +62,7 @@ sha256sums_x86_64=('$(gh release view --repo "$REPO" --json assets --jq '.assets
 sha256sums_aarch64=('$(gh release view --repo "$REPO" --json assets --jq '.assets[] | select(.name == "checksums.txt") | .url' | xargs curl -sL | grep "crush-a2a_${TAG}_linux_arm64.tar.gz" | awk '{print $1}')')
 
 package() {
-    install -Dm755 "crush" "\${pkgdir}/usr/bin/crush"
+    install -Dm755 "crush-a2a" "\${pkgdir}/usr/bin/crush-a2a"
 
     if [ -f LICENSE ]; then
         install -Dm644 "LICENSE" "\${pkgdir}/usr/share/licenses/\${pkgname}/LICENSE"
@@ -86,5 +85,5 @@ sudo pacman -U --noconfirm --ask 4 "$PKG_FILE"
 
 echo ""
 echo "✓ crush-a2a installed successfully"
-crush --version 2>&1 || true
-crush --list-plugins 2>&1 | head -20
+crush-a2a --version 2>&1 || true
+crush-a2a --list-plugins 2>&1 | head -20

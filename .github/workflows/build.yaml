@@ -94,3 +94,28 @@ jobs:
           name: crush-${{ matrix.os }}-${{ matrix.arch }}
           path: crush-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
           if-no-files-found: error
+
+      - name: Build crush-a2a (A2A protocol variant)
+        shell: bash
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          ./xcrush build \
+            --crush ./crush-plugin-poc \
+            --with ./otlp \
+            --with ./agent-status \
+            --with ./periodic-prompts \
+            --with ./subagents \
+            --with ./tempotown \
+            --with ./a2a \
+            --with ./tavily \
+            --with ./kuri \
+            --output ./crush-a2a-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
+
+      - name: Upload crush-a2a artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crush-a2a-${{ matrix.os }}-${{ matrix.arch }}
+          path: crush-a2a-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
+          if-no-files-found: error

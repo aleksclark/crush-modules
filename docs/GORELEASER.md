@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implemented GoReleaser for automated releases of `crush-extended` and `xcrush` binaries with automatic distribution to:
+Implemented GoReleaser for automated releases of `crush-extended`, `crush-a2a`, and `xcrush` binaries with automatic distribution to:
 - GitHub Releases
 - Homebrew (`aleksclark/homebrew-tap`)
 - AUR (Arch User Repository)
@@ -23,6 +23,10 @@ Every push to `master` triggers an automatic release:
   - Clear warnings in description that this is unofficial and untested
   - Conflicts with official `crush` package
   - Maintainer: Aleks Clark <aleks.clark@gmail.com>
+
+- **crush-a2a**: Unofficial Crush build with the A2A v1.0 protocol plugin (instead of ACP)
+  - Installs a distinctly named `crush-a2a` binary (no conflict with `crush`)
+  - Same unofficial/untested warnings and maintainer as crush-extended
 
 - **xcrush**: Build tool for creating custom Crush distributions
   - Also marked as unofficial
@@ -56,11 +60,11 @@ Since each plugin is its own Go module, we use a two-phase build:
 
 #### Homebrew
 - Repository: `aleksclark/homebrew-tap`
-- Formulas: `crush-extended.rb`, `xcrush.rb`
+- Formulas: `crush-extended.rb`, `crush-a2a.rb`, `xcrush.rb`
 - Auto-updated on every release
 
 #### AUR (Arch Linux)
-- Packages: `crush-extended-bin`, `xcrush-bin`
+- Packages: `crush-extended-bin`, `crush-a2a-bin`, `xcrush-bin`
 - Auto-updated on every release via SSH deployment
 
 ## Files Created
