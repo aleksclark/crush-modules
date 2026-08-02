@@ -144,6 +144,31 @@ Body.`,
 	}
 }
 
+func TestRegistryListReturnsAgentsSortedByName(t *testing.T) {
+	t.Parallel()
+
+	registry := &Registry{agents: map[string]*SubAgent{
+		"zulu":    {Name: "zulu"},
+		"alpha":   {Name: "alpha"},
+		"mike":    {Name: "mike"},
+		"bravo":   {Name: "bravo"},
+		"yankee":  {Name: "yankee"},
+		"charlie": {Name: "charlie"},
+		"xray":    {Name: "xray"},
+		"delta":   {Name: "delta"},
+	}}
+	expected := []string{"alpha", "bravo", "charlie", "delta", "mike", "xray", "yankee", "zulu"}
+
+	for range 100 {
+		agents := registry.List()
+		names := make([]string, len(agents))
+		for i, agent := range agents {
+			names[i] = agent.Name
+		}
+		require.Equal(t, expected, names)
+	}
+}
+
 func TestParseToolList(t *testing.T) {
 	t.Parallel()
 
