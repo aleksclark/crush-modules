@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 	"sync"
 
 	"charm.land/fantasy"
@@ -131,6 +132,9 @@ func (r *Registry) List() []*SubAgent {
 	for _, agent := range r.agents {
 		agents = append(agents, agent)
 	}
+	sort.Slice(agents, func(i, j int) bool {
+		return agents[i].Name < agents[j].Name
+	})
 	return agents
 }
 
