@@ -7,7 +7,7 @@ replace github.com/charmbracelet/crush => ../../crush-plugin-poc
 replace github.com/aleksclark/crush-modules => ../
 
 require (
-	charm.land/fantasy v0.40.0
+	charm.land/fantasy v0.41.0
 	github.com/a2aproject/a2a-go/v2 v2.2.0
 	github.com/aleksclark/crush-modules v0.0.0-00010101000000-000000000000
 	github.com/charmbracelet/crush v0.0.0
@@ -37,9 +37,9 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/kaptinlin/jsonpointer v0.4.28 // indirect
-	github.com/kaptinlin/jsonschema v0.9.6 // indirect
+	github.com/kaptinlin/jsonschema v0.9.8 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
+	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
 	github.com/mattn/go-runewidth v0.0.24 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
