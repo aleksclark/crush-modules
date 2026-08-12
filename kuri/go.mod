@@ -3,7 +3,7 @@ module github.com/aleksclark/crush-modules/kuri
 go 1.26.5
 
 require (
-	charm.land/fantasy v0.40.0
+	charm.land/fantasy v0.41.0
 	github.com/charmbracelet/crush v0.0.0
 	github.com/stretchr/testify v1.11.1
 )
@@ -16,7 +16,7 @@ require (
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/kaptinlin/jsonpointer v0.4.28 // indirect
-	github.com/kaptinlin/jsonschema v0.9.6 // indirect
+	github.com/kaptinlin/jsonschema v0.9.8 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	golang.org/x/net v0.57.0 // indirect
