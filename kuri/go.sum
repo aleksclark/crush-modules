@@ -1,5 +1,5 @@
-charm.land/fantasy v0.41.0 h1:q+KMmeLdSSDSZcQp3ZoHHS0+TSnOGB8CRynT0A4EmXU=
-charm.land/fantasy v0.41.0/go.mod h1:0+uNIRW/jlzQmA9c6/XRZ6+WLCZl8xjsvZTaOF0KZio=
+charm.land/fantasy v0.41.1 h1:BUZElxFUqvWQ0T26xQHN8EgBqokfcz536CMYNs/nHbc=
+charm.land/fantasy v0.41.1/go.mod h1:8dC1jJpVDAC5alLRn14CAbc5TGZ4dQOD993ZHmo1laY=
 github.com/charmbracelet/x/exp/slice v0.0.0-20260730164118-7e2d3e6c5238 h1:Sox2NmzcVw07WbIkfcC8ZwS0lCZtOOMPhVBIq3Z1KTM=
 github.com/charmbracelet/x/exp/slice v0.0.0-20260730164118-7e2d3e6c5238/go.mod h1:vqEfX6xzqW1pKKZUUiFOKg0OQ7bCh54Q2vR/tserrRA=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=

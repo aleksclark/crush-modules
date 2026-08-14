@@ -1,5 +1,5 @@
-charm.land/fantasy v0.41.0 h1:q+KMmeLdSSDSZcQp3ZoHHS0+TSnOGB8CRynT0A4EmXU=
-charm.land/fantasy v0.41.0/go.mod h1:0+uNIRW/jlzQmA9c6/XRZ6+WLCZl8xjsvZTaOF0KZio=
+charm.land/fantasy v0.41.1 h1:BUZElxFUqvWQ0T26xQHN8EgBqokfcz536CMYNs/nHbc=
+charm.land/fantasy v0.41.1/go.mod h1:8dC1jJpVDAC5alLRn14CAbc5TGZ4dQOD993ZHmo1laY=
 github.com/charmbracelet/colorprofile v0.4.3 h1:QPa1IWkYI+AOB+fE+mg/5/4HRMZcaXex9t5KX76i20Q=
 github.com/charmbracelet/colorprofile v0.4.3/go.mod h1:/zT4BhpD5aGFpqQQqw7a+VtHCzu+zrQtt1zhMt9mR4Q=
 github.com/charmbracelet/ultraviolet v0.0.0-20260703014108-f5a850f9c2b7 h1:3FmWoGNWK4STvqg0O0Aeav2T7rodWJAPeF0QpH+8gFw=
