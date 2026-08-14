@@ -3,7 +3,7 @@ module github.com/aleksclark/crush-modules/acp
 go 1.26.5
 
 require (
-	charm.land/fantasy v0.41.0
+	charm.land/fantasy v0.41.1
 	github.com/aleksclark/crush-modules v0.0.0-00010101000000-000000000000
 	github.com/charmbracelet/crush v0.0.0
 	github.com/google/uuid v1.6.0

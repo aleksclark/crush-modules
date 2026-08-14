@@ -7,7 +7,7 @@ replace github.com/charmbracelet/crush => ../../crush-plugin-poc
 replace github.com/aleksclark/crush-modules => ../
 
 require (
-	charm.land/fantasy v0.41.0
+	charm.land/fantasy v0.41.1
 	github.com/a2aproject/a2a-go/v2 v2.2.0
 	github.com/aleksclark/crush-modules v0.0.0-00010101000000-000000000000
 	github.com/charmbracelet/crush v0.0.0
