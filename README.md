@@ -106,6 +106,29 @@ periodic_prompts(action: "list")     # List configured prompts
 
 A simple test plugin for development and testing purposes.
 
+## Standard client/server authentication
+
+The distributed Crush binaries support bearer-token authentication for the
+standard `CRUSH_CLIENT_SERVER=1` / `--host` protocol. This is part of the Crush
+base used by `crush-extended`, not the A2A or ACP plugins.
+
+Set the same token on the server and clients. The environment variable is
+recommended because `--server-token` places the value in process arguments:
+
+```bash
+# Server.
+CRUSH_SERVER_TOKEN="$(cat /secure/path/crush.token)" \
+  crush server --host tcp://127.0.0.1:8080
+
+# Client.
+CRUSH_CLIENT_SERVER=1 CRUSH_SERVER_TOKEN="$(cat /secure/path/crush.token)" \
+  crush --host tcp://127.0.0.1:8080
+```
+
+When the token is unset, the server remains unauthenticated for backward
+compatibility. TCP transport is currently unencrypted, so use an encrypted
+tunnel or TLS-terminating proxy across machine or trust boundaries.
+
 ## Installation
 
 ### From GitHub Releases
