@@ -165,9 +165,35 @@ tasks:
           --with ./tavily \
           --output {{.OUTPUT_DIR}}/crush-a2a
 
+  clientserver:generate:
+    desc: Regenerate the tracked public Crush client/server protocol artifact
+    cmds:
+      - cd clientserver && go generate ./...
+
+  clientserver:check:
+    desc: Verify the public protocol artifact has no generator drift
+    cmds:
+      - bash -c 'tmp=$(mktemp -d); trap "rm -rf $tmp" EXIT; cd clientserver; go -C tools/protocolgen run . -out "$tmp"; cmp protocol_gen.go "$tmp/protocol_gen.go"'
+
+  clientserver:clean-layout:
+    desc: Simulate CI from a tracked base plus only the intended public module overlay
+    cmds:
+      - cd clientserver && go test -run '^TestCleanLayoutSimulation$' -count=1
+
+  clientserver:test:
+    desc: Test the public protocol module, determinism, and external import surface
+    cmds:
+      - cd clientserver && go -C tools/protocolgen run . -out ../.. -check && go test ./...
+
+  ping:deps-check:
+    desc: Prove ping's direct Fantasy pin remains aligned with the resolved Crush producer
+    cmds:
+      - cd ping && go mod tidy -diff
+
   test:
     desc: Run unit tests for all plugins (skips e2e tests)
     cmds:
+      - task ping:deps-check
       - cd ping && go test -short ./...
       - cd otlp && go test -short ./...
       - cd agent-status && go test -short ./...
@@ -177,6 +203,7 @@ tasks:
       - cd acp && go test -short ./...
       - cd a2a && go test -short ./...
       - cd tavily && go test -short ./...
+      - cd clientserver && go -C tools/protocolgen run . -out ../.. -check && go test -short ./...
 
   test:e2e:
     desc: Run end-to-end tests (requires distro:all to be built first)
