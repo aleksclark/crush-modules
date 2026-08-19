@@ -1,6 +1,6 @@
 module github.com/aleksclark/crush-modules/otlp
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/aleksclark/crush-modules v0.0.0

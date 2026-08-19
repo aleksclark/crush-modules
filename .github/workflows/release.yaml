@@ -28,7 +28,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: crush-plugin-poc/go.mod
+          go-version: '1.26.6'
 
       - name: Update go.mod replacements for CI
         run: |

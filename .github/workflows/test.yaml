@@ -24,7 +24,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: crush-plugin-poc/go.mod
+          go-version: '1.26.6'
           cache-dependency-path: |
             go.sum
             ping/go.sum
