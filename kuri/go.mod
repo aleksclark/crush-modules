@@ -1,6 +1,6 @@
 module github.com/aleksclark/crush-modules/kuri
 
-go 1.26.5
+go 1.26.6
 
 require (
 	charm.land/fantasy v0.41.1

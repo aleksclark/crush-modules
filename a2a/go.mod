@@ -1,6 +1,6 @@
 module github.com/aleksclark/crush-modules/a2a
 
-go 1.26.5
+go 1.26.6
 
 replace github.com/charmbracelet/crush => ../../crush-plugin-poc
 

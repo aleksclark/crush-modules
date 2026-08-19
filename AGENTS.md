@@ -54,7 +54,7 @@ Your `go.mod` needs:
 ```go
 module github.com/aleksclark/crush-modules/myplugin
 
-go 1.25.5
+go 1.26.6
 
 require (
     charm.land/fantasy v0.6.1
