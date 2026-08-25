@@ -22,7 +22,7 @@ require (
 	github.com/a2aproject/a2a-go/v2 v2.2.0 // indirect
 	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/anthropics/anthropic-sdk-go v1.63.1 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.37 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.38 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
 	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/esiqveland/notify v0.13.3 // indirect
@@ -68,8 +68,8 @@ require (
 require (
 	charm.land/bubbles/v2 v2.2.0 // indirect
 	charm.land/bubbletea/v2 v2.0.9 // indirect
-	charm.land/catwalk v0.52.1 // indirect
-	charm.land/fantasy v0.41.2 // indirect
+	charm.land/catwalk v0.52.8 // indirect
+	charm.land/fantasy v0.41.3 // indirect
 	charm.land/glamour/v2 v2.0.1 // indirect
 	charm.land/lipgloss/v2 v2.0.5 // indirect
 	charm.land/log/v2 v2.0.0 // indirect
@@ -88,20 +88,20 @@ require (
 	github.com/aleksclark/crush-modules/tavily v0.0.0-00010101000000-000000000000
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.43.5 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.17 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.32.36 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.35 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.36 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.36 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.36 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.16 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.36 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.5.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.33.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.38.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.45.5 // indirect
-	github.com/aws/smithy-go v1.27.7 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.43.6 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.18 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.32.37 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.36 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.37 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.37 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.37 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.17 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.37 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.5.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.33.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.38.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.45.6 // indirect
+	github.com/aws/smithy-go v1.27.8 // indirect
 	github.com/aymanbagabas/go-udiff v0.4.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
@@ -229,8 +229,8 @@ require (
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/api v0.293.0 // indirect
 	google.golang.org/genai v1.68.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260810153831-ec0a7760b754 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260810153831-ec0a7760b754 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260818201246-1b0934165a6f // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260818201246-1b0934165a6f // indirect
 	google.golang.org/grpc v1.83.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect

@@ -3,7 +3,7 @@ module github.com/aleksclark/crush-modules/kuri
 go 1.26.6
 
 require (
-	charm.land/fantasy v0.41.2
+	charm.land/fantasy v0.41.3
 	github.com/charmbracelet/crush v0.0.0
 	github.com/stretchr/testify v1.12.0
 )
