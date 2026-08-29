@@ -15,7 +15,7 @@ require (
 )
 
 require (
-	charm.land/fantasy v0.41.3 // indirect
+	charm.land/fantasy v0.42.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
