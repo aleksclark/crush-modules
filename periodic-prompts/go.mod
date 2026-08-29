@@ -3,7 +3,7 @@ module github.com/aleksclark/crush-modules/periodic-prompts
 go 1.26.6
 
 require (
-	charm.land/fantasy v0.41.3
+	charm.land/fantasy v0.42.0
 	github.com/aleksclark/crush-modules v0.1.0
 	github.com/charmbracelet/crush v0.0.0
 	github.com/robfig/cron/v3 v3.0.1

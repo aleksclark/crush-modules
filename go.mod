@@ -69,7 +69,7 @@ require (
 	charm.land/bubbles/v2 v2.2.1 // indirect
 	charm.land/bubbletea/v2 v2.0.9 // indirect
 	charm.land/catwalk v0.52.8 // indirect
-	charm.land/fantasy v0.41.3 // indirect
+	charm.land/fantasy v0.42.0 // indirect
 	charm.land/glamour/v2 v2.0.1 // indirect
 	charm.land/lipgloss/v2 v2.0.5 // indirect
 	charm.land/log/v2 v2.0.0 // indirect
