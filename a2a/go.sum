@@ -1,5 +1,5 @@
-charm.land/fantasy v0.42.1 h1:GLN56oqMI7fmFKuhOWcjEKi8z6ITLdkio8Y38wAnl/k=
-charm.land/fantasy v0.42.1/go.mod h1:9fwNlfbTpQreoLiflP7bSyfnCSeHNxnJ+xOZqwVjRdU=
+charm.land/fantasy v0.43.0 h1:/RD78E3d5io3+vRRkWcU2rlRRrdNaYqdlWtXwazSbro=
+charm.land/fantasy v0.43.0/go.mod h1:9fwNlfbTpQreoLiflP7bSyfnCSeHNxnJ+xOZqwVjRdU=
 github.com/a2aproject/a2a-go/v2 v2.2.0 h1:eayiNXYpyTOLVhhQrGmIHlcy8GnOdnwaNdYQPvS84Ik=
 github.com/a2aproject/a2a-go/v2 v2.2.0/go.mod h1:htTxMwicNXXXEwwfjuB/Pd1g7UHDrswhSievncmTVcE=
 github.com/charmbracelet/colorprofile v0.4.3 h1:QPa1IWkYI+AOB+fE+mg/5/4HRMZcaXex9t5KX76i20Q=

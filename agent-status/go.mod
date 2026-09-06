@@ -10,7 +10,7 @@ require (
 )
 
 require (
-	charm.land/fantasy v0.42.1 // indirect
+	charm.land/fantasy v0.43.0 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260811164956-006e29f97886 // indirect
 	github.com/charmbracelet/x/ansi v0.11.8 // indirect

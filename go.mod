@@ -22,7 +22,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.9 // indirect
 	charm.land/catwalk v0.52.19 // indirect
 	charm.land/fang/v2 v2.0.1 // indirect
-	charm.land/fantasy v0.42.1 // indirect
+	charm.land/fantasy v0.43.0 // indirect
 	charm.land/glamour/v2 v2.0.1 // indirect
 	charm.land/lipgloss/v2 v2.0.6 // indirect
 	charm.land/log/v2 v2.0.0 // indirect
