@@ -1,5 +1,5 @@
-charm.land/fantasy v0.43.0 h1:/RD78E3d5io3+vRRkWcU2rlRRrdNaYqdlWtXwazSbro=
-charm.land/fantasy v0.43.0/go.mod h1:9fwNlfbTpQreoLiflP7bSyfnCSeHNxnJ+xOZqwVjRdU=
+github.com/aleksclark/fantasy v0.12.2-0.20260910105032-c654406e1947 h1:mdribByYfDVByTY9k6ni6XfHGA+q6m1/aAf5aImh3nI=
+github.com/aleksclark/fantasy v0.12.2-0.20260910105032-c654406e1947/go.mod h1:9fwNlfbTpQreoLiflP7bSyfnCSeHNxnJ+xOZqwVjRdU=
 github.com/charmbracelet/x/exp/slice v0.0.0-20260730164118-7e2d3e6c5238 h1:Sox2NmzcVw07WbIkfcC8ZwS0lCZtOOMPhVBIq3Z1KTM=
 github.com/charmbracelet/x/exp/slice v0.0.0-20260730164118-7e2d3e6c5238/go.mod h1:vqEfX6xzqW1pKKZUUiFOKg0OQ7bCh54Q2vR/tserrRA=
 github.com/go-viper/mapstructure/v2 v2.5.0 h1:vM5IJoUAy3d7zRSVtIwQgBj7BiWtMPfmPEgAXnvj1Ro=

@@ -183,13 +183,14 @@ sudo rpm -i crush-extended_VERSION_linux_x86_64.rpm
 ### Building from Source
 
 **Prerequisites:**
-- Go 1.23 or later
+- Go 1.27 or later
 - [Task](https://taskfile.dev/) (go-task)
 
 1. Clone this repository alongside the Crush source:
    ```bash
    git clone https://github.com/aleksclark/crush-modules.git
-   git clone https://github.com/charmbracelet/crush.git crush-plugin-poc
+   git clone https://github.com/aleksclark/crush.git crush-plugin-poc
+   git -C crush-plugin-poc checkout 991032aee818e4fabf1e6a2b02d2f27ada4547a6
    ```
 
 2. Build the custom Crush binary with all plugins:
@@ -199,6 +200,9 @@ sudo rpm -i crush-extended_VERSION_linux_x86_64.rpm
    ```
 
 3. The binary will be at `./dist/crush`
+
+For GPT-6 Astra support, the Fantasy dependency pin, and provider regression
+tests, see [OpenAI model compatibility](docs/OPENAI_COMPATIBILITY.md).
 
 ### Build Options
 

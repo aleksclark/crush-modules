@@ -3,6 +3,7 @@ module github.com/aleksclark/crush-modules
 go 1.27.0
 
 require (
+	charm.land/fantasy v0.43.1
 	github.com/aleksclark/crush-modules/a2a v0.0.0-00010101000000-000000000000
 	github.com/aleksclark/crush-modules/acp v0.0.0
 	github.com/aleksclark/crush-modules/agent-status v0.0.0-00010101000000-000000000000
@@ -22,7 +23,6 @@ require (
 	charm.land/bubbletea/v2 v2.0.9 // indirect
 	charm.land/catwalk v0.52.28 // indirect
 	charm.land/fang/v2 v2.0.1 // indirect
-	charm.land/fantasy v0.43.0 // indirect
 	charm.land/glamour/v2 v2.0.1 // indirect
 	charm.land/lipgloss/v2 v2.0.6 // indirect
 	charm.land/log/v2 v2.0.1 // indirect
@@ -258,3 +258,5 @@ replace github.com/aleksclark/crush-modules/tavily => ./tavily
 replace github.com/aleksclark/crush-modules/kuri => ./kuri
 
 replace github.com/aleksclark/crush-modules/a2a => ./a2a
+
+replace charm.land/fantasy => github.com/aleksclark/fantasy v0.12.2-0.20260910105032-c654406e1947

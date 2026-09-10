@@ -10,7 +10,7 @@ require (
 )
 
 require (
-	charm.land/fantasy v0.43.0 // indirect
+	charm.land/fantasy v0.43.1 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260811164956-006e29f97886 // indirect
 	github.com/charmbracelet/x/ansi v0.11.8 // indirect
@@ -48,3 +48,5 @@ require (
 replace github.com/charmbracelet/crush => ../../crush-plugin-poc
 
 replace github.com/aleksclark/crush-modules => ../
+
+replace charm.land/fantasy => github.com/aleksclark/fantasy v0.12.2-0.20260910105032-c654406e1947
