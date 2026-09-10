@@ -166,8 +166,9 @@ tasks:
           --output {{.OUTPUT_DIR}}/crush-a2a
 
   test:
-    desc: Run unit tests for all plugins (skips e2e tests)
+    desc: Run provider regression and plugin unit tests (skips e2e tests)
     cmds:
+      - go test -short ./testutil/...
       - cd ping && go test -short ./...
       - cd otlp && go test -short ./...
       - cd agent-status && go test -short ./...
@@ -182,6 +183,7 @@ tasks:
     desc: Run end-to-end tests (requires distro:all to be built first)
     deps: [distro:all]
     cmds:
+      - go test -v -tags e2e ./testutil -run TestGPT6AstraDistro
       - cd ping && go test -v -tags e2e -run 'Plugin'
       - cd tempotown && go test -v -tags e2e -run 'Tempotown'
       - cd acp && go test -v -tags e2e -run 'ACP'

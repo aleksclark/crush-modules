@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: aleksclark/crush
-          ref: crush-modules-base
+          ref: 1a7dd29c64fb6ed9914d1839a5bd9098fe0dedbe # Includes versioned xcrush replacements.
           path: crush-plugin-poc
 
       - name: Set up Go

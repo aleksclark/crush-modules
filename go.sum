@@ -6,8 +6,6 @@ charm.land/catwalk v0.52.28 h1:62bGtkyLFy7HNH4E6axUlLuf6JxSd4SmAylmKrUl+eQ=
 charm.land/catwalk v0.52.28/go.mod h1:T0YPUZkPd60T9bvvHwEqALivY+0FoHmMWvaUGTJalHk=
 charm.land/fang/v2 v2.0.1 h1:zQCM8JQJ1JnQX/66B5jlCYBUxL2as5JXQZ2KJ6EL0mY=
 charm.land/fang/v2 v2.0.1/go.mod h1:S1GmkpcvK+OB5w9caywUnJcsMew45Ot8FXqoz8ALrII=
-charm.land/fantasy v0.43.0 h1:/RD78E3d5io3+vRRkWcU2rlRRrdNaYqdlWtXwazSbro=
-charm.land/fantasy v0.43.0/go.mod h1:9fwNlfbTpQreoLiflP7bSyfnCSeHNxnJ+xOZqwVjRdU=
 charm.land/glamour/v2 v2.0.1 h1:xl+r00A4aJWU0z8fgwKd9fQQ4rsphqGUzuEiXZP5n+c=
 charm.land/glamour/v2 v2.0.1/go.mod h1:jo9z8XqVKPeEFMVdvCRLGk++RyJ3CdUwgNr7EvXLw3k=
 charm.land/lipgloss/v2 v2.0.6 h1:EaGKeuA8FvF+v2BT5VmZd2LoYLaMZJXA5n34th8nCIQ=
@@ -45,6 +43,8 @@ github.com/alecthomas/chroma/v2 v2.27.0 h1:FodwmyOBgJULFYmDqibcp9pvfDLWdtPRh9v/r
 github.com/alecthomas/chroma/v2 v2.27.0/go.mod h1:NjJ3ciIgrqBNeIkWZ4e46nseoLDslxU1LmfCoL+wcY8=
 github.com/alecthomas/repr v0.5.2 h1:SU73FTI9D1P5UNtvseffFSGmdNci/O6RsqzeXJtP0Qs=
 github.com/alecthomas/repr v0.5.2/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
+github.com/aleksclark/fantasy v0.12.2-0.20260910105032-c654406e1947 h1:mdribByYfDVByTY9k6ni6XfHGA+q6m1/aAf5aImh3nI=
+github.com/aleksclark/fantasy v0.12.2-0.20260910105032-c654406e1947/go.mod h1:9fwNlfbTpQreoLiflP7bSyfnCSeHNxnJ+xOZqwVjRdU=
 github.com/andybalholm/brotli v1.2.3 h1:8H1qwOkl2LPfjf3YezB90JnCliZb6SInJ/OJkEbA5NQ=
 github.com/andybalholm/brotli v1.2.3/go.mod h1:rzTDkvFWvIrjDXZHkuS16NPggd91W3kUSvPlQ1pLaKY=
 github.com/andybalholm/cascadia v1.3.2/go.mod h1:7gtRlve5FxPPgIgX36uWBX58OdBsSS6lUvCFb+h7KvU=

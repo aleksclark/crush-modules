@@ -3,7 +3,7 @@ module github.com/aleksclark/crush-modules/ping
 go 1.27.0
 
 require (
-	charm.land/fantasy v0.43.0
+	charm.land/fantasy v0.43.1
 	github.com/aleksclark/crush-modules v0.0.0-00010101000000-000000000000
 	github.com/charmbracelet/crush v0.0.0
 	github.com/stretchr/testify v1.12.1
@@ -39,11 +39,13 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/image v0.45.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 )
 
 replace github.com/charmbracelet/crush => ../../crush-plugin-poc
 
 replace github.com/aleksclark/crush-modules => ../
+
+replace charm.land/fantasy => github.com/aleksclark/fantasy v0.12.2-0.20260910105032-c654406e1947

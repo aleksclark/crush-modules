@@ -7,7 +7,7 @@ replace github.com/charmbracelet/crush => ../../crush-plugin-poc
 replace github.com/aleksclark/crush-modules => ../
 
 require (
-	charm.land/fantasy v0.43.0
+	charm.land/fantasy v0.43.1
 	github.com/a2aproject/a2a-go/v2 v2.2.0
 	github.com/aleksclark/crush-modules v0.0.0-00010101000000-000000000000
 	github.com/charmbracelet/crush v0.0.0
@@ -49,3 +49,5 @@ require (
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 )
+
+replace charm.land/fantasy => github.com/aleksclark/fantasy v0.12.2-0.20260910105032-c654406e1947
