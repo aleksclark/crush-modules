@@ -190,7 +190,7 @@ sudo rpm -i crush-extended_VERSION_linux_x86_64.rpm
    ```bash
    git clone https://github.com/aleksclark/crush-modules.git
    git clone https://github.com/aleksclark/crush.git crush-plugin-poc
-   git -C crush-plugin-poc checkout 991032aee818e4fabf1e6a2b02d2f27ada4547a6
+   git -C crush-plugin-poc checkout 1a7dd29c64fb6ed9914d1839a5bd9098fe0dedbe
    ```
 
 2. Build the custom Crush binary with all plugins:

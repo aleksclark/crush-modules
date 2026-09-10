@@ -41,7 +41,7 @@ plugin modules into its generated build module. Updating only the root would
 leave `task distro` and individual plugin builds unfixed.
 
 CI also pins the Crush plugin base to
-[`991032aee818`](https://github.com/aleksclark/crush/commit/991032aee818e4fabf1e6a2b02d2f27ada4547a6)
+[`1a7dd29c64fb`](https://github.com/aleksclark/crush/commit/1a7dd29c64fb6ed9914d1839a5bd9098fe0dedbe)
 on `fix/xcrush-versioned-replacements`. Earlier xcrush builds incorrectly turn a
 plugin's versioned replacement into an absolute local path, making `task distro`
 fail. Local builds need this commit (or a descendant); see the source checkout
